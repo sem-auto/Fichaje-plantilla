@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fichaje</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #f2f2f2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+
+    h1 {
+      font-size: 3vh;
+      margin-bottom: 2vh;
+    }
+
+    .botones {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2vh;
+    }
+
+    button {
+      padding: 2vh 3vh;
+      font-size: 2vh;
+      border: none;
+      border-radius: 1vh;
+      cursor: pointer;
+      background-color: #1976d2;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <h1>Pantalla de fichaje</h1>
+  <div class="botones">
+    <button onclick="fichar('nombre1', 'entrada')">Nombre 1 Entrada</button>
+    <button onclick="fichar('nombre1', 'salida')">Nombre 1 Salida</button>
+    <!-- Añadir más botones por empresa -->
+  </div>
+
+  <script>
+    function fichar(nombre, tipo) {
+      const url = `https://script.google.com/macros/s/ID_WEBAPP/exec?nombre=${encodeURIComponent(nombre)}&tipo=${tipo}`;
+      fetch(url)
+        .then(() => alert(`${nombre} - ${tipo} registrada`))
+        .catch(() => alert("Error al fichar"));
+    }
+  </script>
+</body>
+</html>
