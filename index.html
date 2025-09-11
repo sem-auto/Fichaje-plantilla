@@ -1,22 +1,26 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Fichaje Alumida (Foto automática)</title>
-<style>
-  :root { --gap: 16px; }
-  body { margin:0; font-family: system-ui, Arial, sans-serif; background:#f4f6f8; color:#111; }
-  .wrap { max-width: 680px; margin: 0 auto; padding: 24px; display:grid; gap: var(--gap); }
-  h1 { text-align:center; margin:0 0 8px; }
-  .grid { display:grid; grid-template-columns: 1fr 1fr; gap: var(--gap); }
-  button { padding:18px; font-size:18px; font-weight:700; border:0; border-radius:14px; cursor:pointer; }
-  .in  { background:#16a34a; color:#fff; }
-  .out { background:#dc2626; color:#fff; }
-  .card { background:#fff; border-radius:14px; padding:16px; box-shadow:0 6px 18px rgba(0,0,0,.06); }
-  video { width:100%; max-height:320px; background:#000; border-radius:12px; transform: scaleX(-1); }
-  .status { font-family: ui-monospace, Menlo, Consolas, monospace; font-size:14px; white-space:pre-wrap; }
-</style>
+  <meta charset="utf-8" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fichaje Alumida (Foto automática)</title>
+  <style>
+    :root { --gap: 16px; }
+    body { margin:0; font-family: system-ui, Arial, sans-serif; background:#f4f6f8; color:#111; }
+    .wrap { max-width: 680px; margin: 0 auto; padding: 24px; display:grid; gap: var(--gap); }
+    h1 { text-align:center; margin:0 0 8px; }
+    .grid { display:grid; grid-template-columns: 1fr 1fr; gap: var(--gap); }
+    button { padding:18px; font-size:18px; font-weight:700; border:0; border-radius:14px; cursor:pointer; }
+    .in  { background:#16a34a; color:#fff; }
+    .out { background:#dc2626; color:#fff; }
+    .ghost { background:#111; color:#fff; }
+    .card { background:#fff; border-radius:14px; padding:16px; box-shadow:0 6px 18px rgba(0,0,0,.06); }
+    video { width:100%; max-height:320px; background:#000; border-radius:12px; transform: scaleX(-1); }
+    .status { font-family: ui-monospace, Menlo, Consolas, monospace; font-size:14px; white-space:pre-wrap; }
+  </style>
 </head>
 <body>
 <div class="wrap">
@@ -24,6 +28,9 @@
 
   <div class="card">
     <video id="preview" playsinline autoplay muted></video>
+    <div style="margin-top:10px">
+      <button class="ghost" id="btnCam" type="button">Activar cámara</button>
+    </div>
   </div>
 
   <div class="grid">
@@ -45,33 +52,43 @@ const N = {
 
 let stream = null, videoEl = document.getElementById('preview');
 
-async function initCam() {
+async function startCam() {
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user' }, audio:false });
-    videoEl.srcObject = stream;
-    await videoEl.play();
-  } catch (e) {
-    setStatus('Permite el uso de la cámara (Chrome/Edge). Error: ' + e.message);
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    // 1º intento: frontal
+    stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'user' } }, audio:false });
+    videoEl.srcObject = stream; await videoEl.play();
+    setStatus('Cámara activa.');
+  } catch (e1) {
+    try {
+      // Fallback genérico (elige la que haya)
+      stream = await navigator.mediaDevices.getUserMedia({ video:true, audio:false });
+      videoEl.srcObject = stream; await videoEl.play();
+      setStatus('Cámara activa (fallback).');
+    } catch (e2) {
+      setStatus('Permite la cámara en Chrome (candado → Permisos → Cámara: Permitir). Error: ' + e2.message);
+    }
   }
 }
+
 function snapshotB64() {
   const w = videoEl.videoWidth || 640, h = videoEl.videoHeight || 480;
   const c = document.createElement('canvas'); c.width=w; c.height=h;
   const ctx = c.getContext('2d');
-  ctx.translate(w,0); ctx.scale(-1,1); // espejo para coincidir con preview
+  ctx.translate(w,0); ctx.scale(-1,1); // espejo como la vista previa
   ctx.drawImage(videoEl, 0, 0, w, h);
-  return c.toDataURL('image/jpeg', 0.7).split(',')[1]; // más ligero
+  return c.toDataURL('image/jpeg', 0.7).split(',')[1]; // JPG ligero
 }
+
 async function fichar(nombre, tipo) {
   try {
-    if (!stream) await initCam();
+    if (!stream) { await startCam(); if (!stream) return; }
     const fd = new FormData();
     fd.append('nombre', nombre);
     fd.append('tipo',   tipo);
     fd.append('photo',  snapshotB64());
     setStatus(`Enviando: ${nombre} — ${tipo}...`);
-    const res = await fetch(WEBAPP_URL, { method:'POST', body: fd }); // FormData => sin preflight CORS
-    // Podemos leer respuesta porque no hay preflight
+    const res = await fetch(WEBAPP_URL, { method:'POST', body: fd });
     const txt = await res.text();
     if (navigator.vibrate) navigator.vibrate(60);
     setStatus('OK ' + nombre + ' — ' + tipo + '\n' + txt);
@@ -79,9 +96,11 @@ async function fichar(nombre, tipo) {
     setStatus('Error: ' + e.message);
   }
 }
-function setStatus(m) { document.getElementById('status').textContent = m; }
 
-if (location.protocol === 'https:') initCam();
+function setStatus(m){ document.getElementById('status').textContent = m; }
+
+document.getElementById('btnCam').addEventListener('click', startCam);
+// No arrancamos cámara automáticamente: requiere gesto en muchos dispositivos.
 </script>
 </body>
 </html>
