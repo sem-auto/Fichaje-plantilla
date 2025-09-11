@@ -89,10 +89,9 @@ async function fichar(nombre, tipo) {
     fd.append('tipo',   tipo);
     fd.append('photo',  snapshotB64());
     setStatus(`Enviando: ${nombre} — ${tipo}...`);
-    const res = await fetch(WEBAPP_URL, { method:'POST', body: fd });
-    const txt = await res.text();
-    if (navigator.vibrate) navigator.vibrate(60);
-    setStatus('OK ' + nombre + ' — ' + tipo + '\n' + txt);
+ await fetch(WEBAPP_URL, { method:'POST', mode:'no-cors', body: fd });
+if (navigator.vibrate) navigator.vibrate(60);
+setStatus('OK ' + nombre + ' — ' + tipo + ' (enviado)');
   } catch (e) {
     setStatus('Error: ' + e.message);
   }
