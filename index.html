@@ -1,60 +1,146 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fichaje</title>
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/png" href="favicon.png">
+  <meta charset="utf-8" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fichaje con Foto</title>
   <style>
-    body {
-      margin: 0;
-      font-family: sans-serif;
-      background: #f2f2f2;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-    }
-
-    h1 {
-      font-size: 3vh;
-      margin-bottom: 2vh;
-    }
-
-    .botones {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 2vh;
-    }
-
-    button {
-      padding: 2vh 3vh;
-      font-size: 2vh;
-      border: none;
-      border-radius: 1vh;
-      cursor: pointer;
-      background-color: #1976d2;
-      color: white;
-    }
+    :root { --gap: 16px; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, Arial, sans-serif; background:#f4f6f8; color:#111; }
+    .wrap { max-width: 640px; margin: 0 auto; padding: 20px; display: grid; gap: var(--gap); }
+    .card { background:#fff; border-radius:14px; padding:16px; box-shadow: 0 6px 18px rgba(0,0,0,.06); }
+    h1 { margin: 4px 0 0; font-size: 20px; font-weight: 700; }
+    label { display:block; font-weight:600; margin-bottom: 6px; }
+    input[type="text"] { width:100%; padding:12px; font-size:16px; border:1px solid #ddd; border-radius:10px; }
+    select { width:100%; padding:10px; border:1px solid #ddd; border-radius:10px; }
+    .row { display:grid; grid-template-columns: 1fr 1fr; gap: var(--gap); }
+    button { width:100%; padding:14px; font-size:18px; border:0; border-radius:12px; cursor:pointer; }
+    .entrada { background:#0ea5e9; color:#fff; }
+    .salida  { background:#ef4444; color:#fff; }
+    .ghost   { background:#111; color:#fff; }
+    .status { font-family: ui-monospace, Menlo, Consolas, monospace; font-size:14px; white-space:pre-wrap; }
+    video { width:100%; max-height:340px; background:#000; border-radius:12px; transform: scaleX(-1); }
+    .opt { display:flex; align-items:center; gap:10px; font-size:14px; color:#333; }
+    .opt input { transform: scale(1.2); }
   </style>
 </head>
 <body>
-  <h1>Pantalla de fichaje</h1>
-  <div class="botones">
-    <button onclick="fichar('nombre1', 'entrada')">Nombre 1 Entrada</button>
-    <button onclick="fichar('nombre1', 'salida')">Nombre 1 Salida</button>
-    <!-- Añadir más botones por empresa -->
+  <div class="wrap">
+    <h1>Fichaje con Foto</h1>
+
+    <div class="card">
+      <label for="nombre">Nombre (exacto como en la hoja)</label>
+      <input id="nombre" type="text" placeholder="Ej.: Mari Paz" autocomplete="name" />
+      <div class="opt" style="margin-top:10px">
+        <input id="sinPausa" type="checkbox" />
+        <label for="sinPausa" style="margin:0;font-weight:500">Sin pausa hoy</label>
+      </div>
+    </div>
+
+    <div class="card">
+      <label>Vista de cámara</label>
+      <video id="preview" playsinline autoplay muted></video>
+      <div style="margin:10px 0; display:grid; grid-template-columns: 1fr auto; gap:10px;">
+        <select id="camList"></select>
+        <button class="ghost" id="btnCam" type="button">Activar cámara</button>
+      </div>
+    </div>
+
+    <div class="card row">
+      <button class="entrada" id="btnIn"  type="button">Fichar ENTRADA</button>
+      <button class="salida"  id="btnOut" type="button">Fichar SALIDA</button>
+    </div>
+
+    <div class="card status" id="status">Listo.</div>
   </div>
 
-  <script>
-    function fichar(nombre, tipo) {
-      const url = `https://script.google.com/macros/s/ID_WEBAPP/exec?nombre=${encodeURIComponent(nombre)}&tipo=${tipo}`;
-      fetch(url)
-        .then(() => alert(`${nombre} - ${tipo} registrada`))
-        .catch(() => alert("Error al fichar"));
-    }
-  </script>
+<script>
+const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbz0y-pCfnhnHmOJu8t7ed7_uLyA-qQmZ4x4tKf-uuGst8OCUyTEUORslWzaW5PpwVvT/exec';
+
+let stream = null;
+const videoEl = document.getElementById('preview');
+const btnCam  = document.getElementById('btnCam');
+const camList = document.getElementById('camList');
+
+async function listCameras() {
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const cams = devices.filter(d => d.kind === 'videoinput');
+  camList.innerHTML = '';
+  // Frontal por defecto si el label lo indica
+  cams.forEach((c,i) => {
+    const opt = document.createElement('option');
+    opt.value = c.deviceId;
+    opt.textContent = c.label || `Cámara ${i+1}`;
+    camList.appendChild(opt);
+  });
+  // Selección heurística: etiqueta que contenga 'front', 'frontal', etc.
+  const frontIdx = cams.findIndex(c => /front|frontal|selfie/i.test(c.label));
+  camList.selectedIndex = frontIdx >= 0 ? frontIdx : 0;
+}
+
+async function startCam(deviceId=null) {
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  const constraints = deviceId
+    ? { video: { deviceId: { exact: deviceId } }, audio:false }
+    : { video: { facingMode: { ideal: 'user' } }, audio:false };
+  stream = await navigator.mediaDevices.getUserMedia(constraints);
+  videoEl.srcObject = stream;
+  await videoEl.play();
+}
+
+async function initCam() {
+  try {
+    await listCameras();
+    await startCam(camList.value || null);
+    btnCam.textContent = 'Reiniciar cámara';
+  } catch (e) {
+    setStatus('Activa permisos de cámara o abre en Chrome. Error: ' + e.message);
+  }
+}
+btnCam.addEventListener('click', initCam);
+camList.addEventListener('change', () => startCam(camList.value));
+
+function snapshotB64() {
+  const w = videoEl.videoWidth  || 640;
+  const h = videoEl.videoHeight || 480;
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  // espejo para que la foto coincida con la vista previa
+  ctx.translate(w, 0); ctx.scale(-1, 1);
+  ctx.drawImage(videoEl, 0, 0, w, h);
+  return c.toDataURL('image/jpeg', 0.8).split(',')[1];
+}
+
+async function enviar(tipo) {
+  const nombre = document.getElementById('nombre').value.trim();
+  const sinPausa = document.getElementById('sinPausa').checked ? 'true' : '';
+  if (!nombre) return setStatus('Falta el nombre.');
+  if (!stream) await initCam();
+  setStatus('Enviando...');
+  try {
+    const res = await fetch(WEBAPP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre, tipo, photo: snapshotB64(), sinPausa })
+    });
+    const txt = await res.text();
+    setStatus('Respuesta: ' + txt);
+  } catch (e) {
+    setStatus('Error: ' + e.message);
+  }
+}
+
+function setStatus(m){ document.getElementById('status').textContent = m; }
+
+document.getElementById('btnIn').addEventListener('click', () => enviar('entrada'));
+document.getElementById('btnOut').addEventListener('click', () => enviar('salida'));
+
+// arranque
+if (location.protocol === 'https:') initCam(); // getUserMedia requiere HTTPS
+</script>
 </body>
 </html>
