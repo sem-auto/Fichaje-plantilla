@@ -1,229 +1,156 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Fichajes</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fichaje</title>
 <style>
-  :root { --ok:#18a957; --err:#d43c2f; --accent:#0d6efd; --bg:#f7f7f8; }
-  html,body{margin:0;padding:0;background:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;color:#111}
-  .app{max-width:980px;margin:0 auto;padding:12px 12px 92px}
-  header{display:flex;align-items:center;gap:12px;margin-bottom:8px}
-  header h1{font-size:18px;margin:0}
-  #ver{font:12px/1 monospace;color:#666}
-  .row{display:flex;flex-wrap:wrap;gap:12px}
-  .col{flex:1 1 320px}
-  .panel{border:1px solid #e6e6e6;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.05);background:#fff}
-  .panel h2{margin:0;padding:10px 12px;font-size:14px;border-bottom:1px solid #eee;background:#fafafa;border-radius:12px 12px 0 0}
-  .panel .body{padding:12px}
-  /* Cámara */
-  .camWrap{position:relative;width:100%;max-width:420px;aspect-ratio:3/4;border-radius:12px;overflow:hidden;border:1px solid #ddd;background:#000}
-  video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);} /* selfie mirror */
+  :root{
+    --green:#24a148; --green-d:#1c7f38;
+    --red:#d13b3b;  --red-d:#a12f2f;
+    --panel:#ffffff; --bg:#f2f4f8; --ink:#111;
+  }
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
+  .wrap{max-width:1100px;margin:24px auto;padding:16px;background:var(--panel);border-radius:16px;box-shadow:0 2px 22px rgba(0,0,0,.08)}
+  h1{margin:0 0 14px 0;text-align:center;font-size:28px}
+  /* cámara */
+  .cam{width:100%;height:460px;background:#000;border-radius:12px;overflow:hidden}
+  video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);} /* selfie */
   canvas{display:none}
-  .bar{display:flex;gap:8px;margin-top:8px}
-  .bar .btn{flex:1 1 auto;padding:10px 12px;border-radius:10px;border:1px solid #e6e6e6;background:#fff;cursor:pointer;font-weight:600}
-  .bar .btn.ok{background:var(--accent);color:#fff;border-color:var(--accent)}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
-  .person{display:flex;gap:6px}
-  .person .who{flex:1 1 auto;padding:10px;border-radius:10px;border:1px solid #e6e6e6;background:#fff;font-weight:600;text-align:center}
-  .person .in{background:#e8f6ee;border-color:#bfe8d0;color:#0d5e2f}
-  .person .out{background:#fff3f2;border-color:#ffd3cf;color:#82271d}
-  .person button{cursor:pointer}
-  /* Toast */
-  .toast{position:fixed;left:12px;right:12px;bottom:12px;background:#fff;border:1px solid #e6e6e6;box-shadow:0 8px 30px rgba(0,0,0,.08);
-         border-radius:12px;padding:12px 14px;font-weight:700;display:flex;align-items:center;gap:10px;min-height:52px}
-  .toast.ok{border-color:#bfe8d0;background:#f3fbf6;color:#0f6b37}
-  .toast.err{border-color:#ffd3cf;background:#fff7f6;color:#a12f23}
-  .toast .dot{width:10px;height:10px;border-radius:50%}
-  .toast.ok .dot{background:var(--ok)} .toast.err .dot{background:var(--err)}
-  .toast .sub{font-weight:500;color:#555;font-size:13px}
-  .hide{display:none}
-  .muted{font-size:12px;color:#666}
+  /* botones 2 columnas */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
+  .btn{
+    width:100%; display:block; text-align:center; font-weight:800; font-size:22px;
+    padding:18px 14px; border-radius:14px; border:none; cursor:pointer;
+    color:#fff; letter-spacing:.3px; box-shadow:0 2px 0 rgba(0,0,0,.18) inset;
+  }
+  .in { background:var(--green); }
+  .in:hover { background:var(--green-d); }
+  .out { background:var(--red); }
+  .out:hover { background:var(--red-d); }
+
+  /* barra de estado inferior */
+  .status{
+    position:fixed; left:0; right:0; bottom:0; padding:10px 16px;
+    background:#7a1a1a; color:#fff; font-weight:700; text-align:left;
+    display:flex; align-items:center; gap:10px; min-height:44px;
+  }
+  .status.ok{ background:#135d2e; }
+  .status.err{ background:#7a1a1a; }
+  .status small{font-weight:600; opacity:.85}
 </style>
 </head>
 <body>
-<div class="app">
-  <header>
-    <h1>Fichajes</h1>
-    <div id="ver" title="Versión backend"></div>
-  </header>
+  <div class="wrap">
+    <h1>Fichaje</h1>
 
-  <div class="row">
-    <div class="col">
-      <div class="panel">
-        <h2>Cámara (selfie)</h2>
-        <div class="body">
-          <div class="camWrap">
-            <video id="cam" playsinline autoplay muted></video>
-            <canvas id="snap"></canvas>
-          </div>
-          <div class="muted">La imagen se invierte solo en pantalla (selfie). Lo guardado sale en orientación correcta.</div>
-          <div class="bar">
-            <button class="btn" id="btnEntrada">Entrada</button>
-            <button class="btn" id="btnSalida">Salida</button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <div class="cam"><video id="cam" autoplay muted playsinline></video><canvas id="snap"></canvas></div>
 
-    <div class="col">
-      <div class="panel">
-        <h2>Trabajadores</h2>
-        <div class="body">
-          <div class="grid" id="people"></div>
-        </div>
-      </div>
+    <div class="grid" id="buttons">
+      <!-- izquierda (entradas) -->
+      <button class="btn in"  onclick="fichar('Ana Lopez Martin','entrada')">Ana Lopez Martin — Entrada</button>
+      <button class="btn out" onclick="fichar('Ana Lopez Martin','salida')">Ana Lopez Martin — Salida</button>
+
+      <button class="btn in"  onclick="fichar('Carla Gomez Torres','entrada')">Carla Gomez Torres — Entrada</button>
+      <button class="btn out" onclick="fichar('Carla Gomez Torres','salida')">Carla Gomez Torres — Salida</button>
+
+      <button class="btn in"  onclick="fichar('Luis Fernandez Diaz','entrada')">Luis Fernandez Diaz — Entrada</button>
+      <button class="btn out" onclick="fichar('Luis Fernandez Diaz','salida')">Luis Fernandez Diaz — Salida</button>
+
+      <button class="btn in"  onclick="fichar('Diego Perez Ruiz','entrada')">Diego Perez Ruiz — Entrada</button>
+      <button class="btn out" onclick="fichar('Diego Perez Ruiz','salida')">Diego Perez Ruiz — Salida</button>
     </div>
   </div>
-</div>
 
-<!-- Toast -->
-<div id="toast" class="toast hide"><div class="dot"></div><div><div id="tm"></div><div class="sub" id="tsub"></div></div></div>
+  <div id="status" class="status"><span id="sMsg">Listo</span> <small id="sSub"></small></div>
 
-<!-- Beep en data URI (44.1kHz, corto) -->
-<audio id="beep" preload="auto"
-src="data:audio/wav;base64,UklGRhQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABYAAAAAAABmZmZmZmZmZmZmZmYA"></audio>
+  <!-- beep -->
+  <audio id="beep"
+    src="data:audio/wav;base64,UklGRhQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABYAAAAAAABmZmZmZmZmZmZmZmYA"
+    preload="auto"></audio>
 
 <script>
-/*** CONFIG ***/
+/* ======= CONFIG ======= */
 const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxlR17AJQw87pZgALcfRTE__1ud65aXrRj7B0OG7tu3Lj5s1bCsFRw09WS81qDa2Q-k/exec';
-const trabajadores = [
-  'Jose Lopez', 'Raquel Ruiz', 'Carmen Garcia', 'Antonio Perez',
-  'Marta Diaz', 'Luis Martin', 'Ana Lopez', 'Juan Sanchez'
-]; // edítalo a tu lista (sin tildes)
 
-/*** UI helpers ***/
-const $ = sel => document.querySelector(sel);
-function toast(msg, kind='info', beep=false, sub=''){
-  const el = $('#toast');
-  $('#tm').textContent = msg;
-  $('#tsub').textContent = sub || '';
-  el.classList.remove('hide','ok','err');
-  if (kind==='ok') el.classList.add('ok');
-  if (kind==='err') el.classList.add('err');
-  if (beep) { const a=$('#beep'); a.currentTime=0; a.play().catch(()=>{}); }
-  clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.add('hide'), 3000);
-}
+/* ======= Cámara (selfie; si falla, trasera) ======= */
+(async function initCam(){
+  const v = document.getElementById('cam');
+  const a = { video:{ facingMode:'user', width:{ideal:1280}, height:{ideal:720} }, audio:false };
+  const b = { video:{ facingMode:'environment', width:{ideal:1280}, height:{ideal:720} }, audio:false };
+  try { v.srcObject = await navigator.mediaDevices.getUserMedia(a); }
+  catch (_) { v.srcObject = await navigator.mediaDevices.getUserMedia(b); v.style.transform=''; }
+})();
 
-function hhmmss(){ return new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
-
-/*** Cámara (selfie) ***/
-async function initCamera(){
-  const v = $('#cam');
-  // Prefer selfie; si falla, trasera
-  const constraintsA = { video: { facingMode:'user', width:{ideal:720}, height:{ideal:960} }, audio:false };
-  const constraintsB = { video: { facingMode:'environment', width:{ideal:720}, height:{ideal:960} }, audio:false };
-  try{ v.srcObject = await navigator.mediaDevices.getUserMedia(constraintsA); }
-  catch(_){ v.srcObject = await navigator.mediaDevices.getUserMedia(constraintsB); v.style.transform=''; } // si es trasera, no volteamos
-}
-
-function snapshotBase64(videoEl, asJpeg=true, quality=0.85){
-  const v = (typeof videoEl==='string') ? $(videoEl) : videoEl;
-  const c = $('#snap'), w = v.videoWidth || 720, h = v.videoHeight || 960;
-  // Canvas tamaño razonable para subir rápido
-  const maxW = 720; const scale = Math.min(1, maxW / w);
-  c.width = Math.round(w*scale); c.height = Math.round(h*scale);
-  const ctx = c.getContext('2d');
+function snapshotBase64(){
+  const v=document.getElementById('cam'), c=document.getElementById('snap');
+  const w=v.videoWidth||1280, h=v.videoHeight||720, maxW=960, sc=Math.min(1, maxW/w);
+  c.width=Math.round(w*sc); c.height=Math.round(h*sc);
+  const ctx=c.getContext('2d');
   ctx.save();
-  // Si está espejado en pantalla (selfie), deshacerlo al guardar
   const mirrored = getComputedStyle(v).transform.includes('matrix(-1');
   if (mirrored){ ctx.translate(c.width,0); ctx.scale(-1,1); }
-  ctx.drawImage(v, 0, 0, c.width, c.height);
+  ctx.drawImage(v,0,0,c.width,c.height);
   ctx.restore();
-  return c.toDataURL(asJpeg? 'image/jpeg':'image/png', quality);
+  return c.toDataURL('image/jpeg',0.85);
 }
 
-/*** JSONP check con reintentos rápidos (solo memoria) ***/
-function jsonpCheck({nombre}, timeoutMs=9000){
-  const deadline = Date.now() + timeoutMs;
+/* ======= JSONP check (solo memoria) con reintentos rápidos ======= */
+function jsonpCheck(nombre, timeoutMs=9000){
+  const deadline = Date.now()+timeoutMs;
   return new Promise((resolve,reject)=>{
-    const tryOnce = ()=>{
+    const poll=()=>{
       const cb='cb'+Math.random().toString(36).slice(2);
       const s=document.createElement('script');
       const url=`${WEBAPP_URL}?check=1&nombre=${encodeURIComponent(nombre)}&t=${Date.now()}&callback=${cb}`;
       const to=setTimeout(()=>{ cleanup(); next(); }, 900);
-      window[cb]=(r)=>{ cleanup(); (r && r.ok) ? resolve(r) : next(); };
+      window[cb]=(r)=>{ cleanup(); (r&&r.ok)?resolve():next(); };
       s.src=url; s.onerror=()=>{ cleanup(); next(); };
       document.body.appendChild(s);
       function cleanup(){ clearTimeout(to); delete window[cb]; s.remove(); }
-      function next(){ if(Date.now()>=deadline) reject(new Error('timeout')); else setTimeout(tryOnce, 280); }
+      function next(){ (Date.now()>=deadline)?reject(new Error('timeout')):setTimeout(poll,280); }
     };
-    tryOnce();
+    poll();
   });
 }
 
-/*** Fichar ***/
-async function fichar(nombre,tipo){
-  toast(`${nombre} — enviando…`, 'info', false, hhmmss());
-  // foto primero (sin bloquear demasiado)
-  const photoB64 = await snapshotBase64($('#cam'), true, 0.8);
+/* ======= UI helpers ======= */
+const sBar = document.getElementById('status');
+const sMsg = document.getElementById('sMsg');
+const sSub = document.getElementById('sSub');
+function setStatus(text, kind='info', sub=''){
+  sMsg.textContent = text; sSub.textContent=sub||'';
+  sBar.classList.remove('ok','err');
+  if(kind==='ok') sBar.classList.add('ok');
+  if(kind==='err') sBar.classList.add('err');
+}
+function hhmmss(){ return new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
 
-  // POST no-cors (rápido); la confirmación no depende de la respuesta HTTP
+/* ======= Fichaje ======= */
+async function fichar(nombre, tipo){
+  setStatus(`${nombre} — enviando…`, 'info', hhmmss());
+  const photoB64 = snapshotBase64();
+
+  // POST rápido (no-cors); la confirmación viene por JSONP memoria
   try{
     await fetch(WEBAPP_URL, {
       method:'POST', mode:'no-cors',
-      headers:{ 'Content-Type':'text/plain;charset=utf-8' }, // evita CORS preflight
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
       body: JSON.stringify({ nombre, tipo, photo: photoB64 })
     });
-  }catch(_){ /* ignorar */ }
+  }catch(_){}
 
-  // margen corto antes del check en memoria
+  // espera mínima antes de comprobar
   await new Promise(r=>setTimeout(r, 500));
 
   try{
-    const r = await jsonpCheck({ nombre }, 9000);
-    toast(`OK ${nombre} — ${hhmmss()} — enviado`, 'ok', true);
+    await jsonpCheck(nombre, 9000);
+    setStatus(`OK ${nombre} — ${hhmmss()} — enviado`, 'ok');
+    const b=document.getElementById('beep'); b.currentTime=0; b.play().catch(()=>{});
   }catch(_){
-    toast(`${nombre} — no confirmado`, 'err');
+    setStatus(`${nombre} — no confirmado (reintenta)`, 'err');
   }
 }
-
-/*** UI: montar lista y botones ***/
-function renderPeople(){
-  const root = $('#people'); root.innerHTML='';
-  trabajadores.forEach(n=>{
-    const row = document.createElement('div'); row.className='person';
-    const who = document.createElement('div'); who.className='who'; who.textContent=n;
-    const bi  = document.createElement('button'); bi.className='in'; bi.textContent='Entrada';
-    const bo  = document.createElement('button'); bo.className='out'; bo.textContent='Salida';
-    bi.onclick = ()=>fichar(n,'entrada');
-    bo.onclick = ()=>fichar(n,'salida');
-    row.appendChild(who); row.appendChild(bi); row.appendChild(bo);
-    root.appendChild(row);
-  });
-}
-
-async function pingVersion(){
-  return new Promise(res=>{
-    const cb='cb'+Math.random().toString(36).slice(2);
-    const s=document.createElement('script');
-    s.src = `${WEBAPP_URL}?ping=1&callback=${cb}&t=${Date.now()}`;
-    window[cb]=(r)=>{ $('#ver').textContent = r && r.version ? `backend: ${r.version}` : 'backend: n/d'; cleanup(); res(); };
-    s.onerror=()=>{ $('#ver').textContent='backend: error'; cleanup(); res(); };
-    function cleanup(){ delete window[cb]; s.remove(); }
-    document.body.appendChild(s);
-  });
-}
-
-/*** Botones rápidos arriba ***/
-function wireQuickButtons(){
-  $('#btnEntrada').onclick = ()=> {
-    const n = trabajadores[0] || 'Trabajador';
-    fichar(n,'entrada');
-  };
-  $('#btnSalida').onclick = ()=> {
-    const n = trabajadores[0] || 'Trabajador';
-    fichar(n,'salida');
-  };
-}
-
-/*** Init ***/
-(async function(){
-  renderPeople();
-  wireQuickButtons();
-  await initCamera();
-  await pingVersion();
-})();
 </script>
 </body>
 </html>
