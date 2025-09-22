@@ -15,13 +15,11 @@
   .wrap{ width:100%; max-width:920px; background:#fff; border-radius:16px; box-shadow:0 8px 26px rgba(0,0,0,.08); padding:16px 16px 18px; }
   h1{ margin:0 0 10px 0; font-size:22px; font-weight:800; text-align:center; }
   .cam{ border-radius:14px; background:#000; overflow:hidden; margin-bottom:12px; height:360px; }
-  /* Selfie (espejo) en la vista previa */
   video{ width:100%; height:100%; object-fit:cover; display:block; background:#000; transform:scaleX(-1); }
   .grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   button{ cursor:pointer; border:none; font-size:18px; padding:18px; border-radius:12px; font-weight:700; color:#fff; }
   .in{ background:#28a745; } .out{ background:#dc3545; }
 
-  /* Pastilla blanca (toast) */
   .toast{
     position:fixed; left:50%; bottom:14px; transform:translateX(-50%) translateY(8px);
     min-width:260px; max-width:90vw; padding:10px 14px; border-radius:12px;
@@ -50,7 +48,7 @@ const trabajadores = ["Ana Lopez Martin","Carla Gomez Torres","Luis Fernandez Di
 
 const $ = s=>document.querySelector(s);
 
-// Cámara (frontal)
+// Cámara frontal
 (async()=>{ try{
   const stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user' }, audio:false });
   $('#cam').srcObject = stream;
@@ -66,24 +64,23 @@ function btn(txt, cls, on){ const b=document.createElement('button'); b.classNam
 
 // Fichar
 async function fichar(nombre,tipo){
-  // Mensaje inmediato: "Nombre — enviando..."
   toast(`${nombre} — enviando…`);
 
-  // Foto (selfie real: también se invierte en captura)
   const photoB64 = await snapshotBase64($('#cam'), true);
 
-  // Envío (no-cors; servidor ya acepta text/plain)
   try{
     await fetch(WEBAPP_URL, { method:'POST', mode:'no-cors', body: JSON.stringify({ nombre, tipo, photo: photoB64 }) });
-  }catch(_){ /* seguimos al check */ }
+  }catch(_){}
 
-  // Confirmación en hoja (JSONP; servidor comprueba última entrada en 5 min)
+  // pequeño margen antes de comprobar
+  await new Promise(r=>setTimeout(r,700));
+
   try{
-    await jsonpCheck({ nombre, tipo }, 8000);
+    await jsonpCheck({ nombre }, 9000);
     const hhmm = new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    toast(`OK ${nombre} — ${hhmm} — enviado`,'ok', true); // beep
+    toast(`OK ${nombre} — ${hhmm} — enviado`,'ok', true);
   }catch(_){
-    toast('No confirmado (reintenta o conexión)','err');
+    toast(`${nombre} — no confirmado`,'err');
   }
 }
 
@@ -91,17 +88,17 @@ async function fichar(nombre,tipo){
 async function snapshotBase64(video, mirror=false){
   const vw=video.videoWidth||640, vh=video.videoHeight||480, W=720, H=Math.round(720*vh/vw);
   const c=Object.assign(document.createElement('canvas'),{width:W,height:H}), ctx=c.getContext('2d');
-  if (mirror){ ctx.translate(W,0); ctx.scale(-1,1); }     // espejo en la foto
+  if (mirror){ ctx.translate(W,0); ctx.scale(-1,1); }
   ctx.drawImage(video,0,0,W,H);
   const dataUrl=c.toDataURL('image/jpeg',0.8);
   return dataUrl.replace(/^data:image\/\w+;base64,/, '');
 }
 
-function jsonpCheck({nombre, tipo}, timeoutMs=8000){
+function jsonpCheck({nombre}, timeoutMs=9000){
   return new Promise((resolve,reject)=>{
     const cb='cb'+Math.random().toString(36).slice(2);
     const s=document.createElement('script');
-    const url=`${WEBAPP_URL}?check=1&nombre=${encodeURIComponent(nombre)}&tipo=${encodeURIComponent(tipo)}&callback=${cb}`;
+    const url=`${WEBAPP_URL}?check=1&nombre=${encodeURIComponent(nombre)}&callback=${cb}`;
     const to=setTimeout(()=>{ cleanup(); reject(new Error('timeout')); }, timeoutMs);
     window[cb]=(r)=>{ cleanup(); (r && r.ok)?resolve():reject(new Error('not ok')); };
     s.src=url; s.onerror=()=>{ cleanup(); reject(new Error('jsonp error')); };
