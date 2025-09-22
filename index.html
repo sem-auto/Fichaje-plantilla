@@ -1,73 +1,73 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Fichaje (foto)</title>
-  <style>
-    :root { --gap:14px; --radius:16px; --statusH:52px; }
-    * { box-sizing:border-box; }
-    html, body { height:100%; margin:0; }
-    body{
-      background:#f4f6f8; color:#111; font-family:system-ui, Arial, sans-serif;
-      min-height:100dvh; padding:var(--gap);
-      padding-bottom: calc(var(--gap) + var(--statusH)); /* deja hueco a la barra fija */
-    }
-    header{ text-align:center; font-weight:800; font-size:22px; margin-bottom:var(--gap); }
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Fichaje (foto)</title>
+<style>
+  :root { --gap:14px; --radius:16px; --statusH:54px; }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; }
+  body{
+    background:#f4f6f8; color:#111; font-family:system-ui, Arial, sans-serif;
+    min-height:100dvh; padding:var(--gap);
+    padding-bottom: calc(var(--gap) + var(--statusH));
+  }
+  header{ text-align:center; font-weight:800; font-size:22px; margin-bottom:var(--gap); }
+  main{ max-width:900px; margin:0 auto; display:grid; gap:var(--gap); }
 
-    /* Contenido principal con scroll si hace falta */
-    main.content{
-      max-width:900px; margin:0 auto;
-      display:grid; gap:var(--gap);
-      grid-template-rows: auto auto; /* cámara y luego botones */
-    }
+  /* === CÁMARA: bloque fijo, sin solapes aunque no tenga permisos === */
+  .cam{ display:grid; gap:10px; }
+  .cam-inner{
+    position:relative; width:100%;
+    /* altura estable: no invade botones */
+    height: clamp(220px, 40vh, 420px);
+    background:#000; border-radius:var(--radius); overflow:hidden;
+  }
+  .placeholder{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:#bbb; font-size:14px; text-align:center; padding:10px;
+  }
+  video{
+    position:absolute; inset:0;
+    width:100%; height:100%; object-fit:cover; transform:scaleX(-1);
+  }
+  .ghost{
+    background:#111; color:#fff; border:0; border-radius:var(--radius);
+    padding:14px; font-size:18px; font-weight:700; cursor:pointer;
+  }
 
-    /* Cámara (altura contenida) */
-    .cam{
-      display:grid; gap:8px;
-      grid-template-rows: 1fr auto;
-      height: clamp(26dvh, 38dvh, 44dvh);  /* más baja para dejar sitio a botones */
-    }
-    video{
-      width:100%; height:100%; display:block; object-fit:cover;
-      background:#000; border-radius:var(--radius); transform:scaleX(-1);
-    }
-    .ghost{
-      background:#111; color:#fff; border:0; border-radius:var(--radius);
-      padding:14px; font-size:18px; font-weight:700; cursor:pointer;
-    }
+  /* === BOTONES: nunca se solapan === */
+  .grid{ display:grid; gap:var(--gap); grid-template-columns:1fr 1fr; }
+  @media (max-width:900px){ .grid{ grid-template-columns:1fr; } }
+  button.in,button.out{
+    width:100%; border:0; border-radius:var(--radius);
+    font-size:20px; font-weight:800; cursor:pointer; padding:0 18px;
+    height:88px;   /* altura táctil estable */
+  }
+  .in{ background:#16a34a; color:#fff; }
+  .out{ background:#dc2626; color:#fff; }
+  button:active{ transform:scale(.98); }
 
-    /* Botones trabajadores */
-    .grid{
-      display:grid; gap:var(--gap);
-      grid-template-columns: 1fr 1fr;
-    }
-    @media (max-width:900px){ .grid{ grid-template-columns:1fr; } } /* tablet vertical: 1 columna */
-    button.in, button.out{
-      width:100%; border:0; border-radius:var(--radius);
-      font-size:20px; font-weight:800; cursor:pointer;
-      padding:22px; height:88px;  /* XXL táctil */
-    }
-    .in  { background:#16a34a; color:#fff; }
-    .out { background:#dc2626; color:#fff; }
-    button:active{ transform:scale(.98); }
-
-    /* Barra de estado fija inferior */
-    .status{
-      position:fixed; left:0; right:0; bottom:0; height:var(--statusH);
-      display:flex; align-items:center; justify-content:center;
-      background:#fff; border-top:1px solid #ddd;
-      font-family:ui-monospace, Menlo, Consolas, monospace; font-size:15px;
-      padding:0 10px; text-align:center;
-    }
-  </style>
+  /* === Barra de estado fija === */
+  .status{
+    position:fixed; left:0; right:0; bottom:0; height:var(--statusH);
+    display:flex; align-items:center; justify-content:center;
+    background:#fff; border-top:1px solid #ddd;
+    font-family:ui-monospace, Menlo, Consolas, monospace; font-size:15px; text-align:center;
+    padding:0 10px;
+  }
+</style>
 </head>
 <body>
   <header>Fichaje</header>
 
-  <main class="content">
+  <main>
     <section class="cam">
-      <video id="preview" playsinline autoplay muted></video>
+      <div class="cam-inner">
+        <video id="preview" playsinline autoplay muted></video>
+        <div id="ph" class="placeholder">Cámara apagada o sin permiso.<br/>Pulsa “Activar cámara”.</div>
+      </div>
       <button class="ghost" id="btnCam" type="button">Activar cámara</button>
     </section>
 
@@ -98,9 +98,10 @@ const N = {
   LUIS:  'Luis Fernández Díaz',
 };
 
-/* === Cámara === */
+/* === Cámara (sin solapes) === */
 let stream = null;
 const videoEl  = document.getElementById('preview');
+const phEl     = document.getElementById('ph');
 const statusEl = document.getElementById('status');
 const btnCam   = document.getElementById('btnCam');
 
@@ -110,17 +111,19 @@ async function startCam(){
     stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'user' } }, audio:false });
     videoEl.srcObject = stream;
     await videoEl.play();
+    phEl.style.display = 'none';
     btnCam.textContent = 'Cámara activa';
     btnCam.disabled = true;
     setStatus('Cámara activa.');
   }catch(e){
+    phEl.style.display = 'flex';
     setStatus('Permite la cámara (candado → Cámara: Permitir). Error: ' + e.message);
   }
 }
 btnCam.addEventListener('click', startCam);
 if (location.protocol === 'https:') startCam();
 
-/* === Captura reducida === */
+/* === Captura reducida (rápida) === */
 function snapshotDataURL(){
   const srcW = videoEl.videoWidth || 640, srcH = videoEl.videoHeight || 480;
   const maxW = 800;
@@ -139,7 +142,7 @@ function beep(ms=120, freq=880, vol=0.07){
     const Ctx = window.AudioContext || window.webkitAudioContext;
     const ctx = new Ctx();
     const o = ctx.createOscillator(), g = ctx.createGain();
-    o.type = 'sine'; o.frequency.value = freq; g.gain.value = vol;
+    o.type='sine'; o.frequency.value=freq; g.gain.value=vol;
     o.connect(g); g.connect(ctx.destination); o.start();
     setTimeout(()=>{ o.stop(); ctx.close(); }, ms);
   }catch(_){}
