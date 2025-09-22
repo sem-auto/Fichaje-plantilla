@@ -6,7 +6,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Fichaje Alumida (Foto automática)</title>
+  <title>Fichaje (Foto automática)</title>
   <style>
     :root { --gap: 16px; }
     * { box-sizing: border-box; }
@@ -25,7 +25,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Fichaje Alumida</h1>
+  <h1>Fichaje</h1>
 
   <div class="card">
     <video id="preview" playsinline autoplay muted></video>
@@ -35,10 +35,10 @@
   </div>
 
   <div class="grid">
-    <button class="in"  onclick="fichar(N.SALVADOR, 'entrada')">Salvador Sánchez Bonet — Entrada</button>
-    <button class="out" onclick="fichar(N.SALVADOR, 'salida')">Salvador Sánchez Bonet — Salida</button>
-    <button class="in"  onclick="fichar(N.MARIPAZ,  'entrada')">Mari Paz García Saez — Entrada</button>
-    <button class="out" onclick="fichar(N.MARIPAZ,  'salida')">Mari Paz García Saez — Salida</button>
+    <button class="in"  onclick="fichar(N.ANA,   'entrada')">Ana López Martín — Entrada</button>
+    <button class="out" onclick="fichar(N.ANA,   'salida')">Ana López Martín — Salida</button>
+    <button class="in"  onclick="fichar(N.DIEGO, 'entrada')">Diego Pérez Ruiz — Entrada</button>
+    <button class="out" onclick="fichar(N.DIEGO, 'salida')">Diego Pérez Ruiz — Salida</button>
   </div>
 
   <div class="card status" id="status">Listo.</div>
@@ -48,8 +48,8 @@
 /* === CONFIG === */
 const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxlR17AJQw87pZgALcfRTE__1ud65aXrRj7B0OG7tu3Lj5s1bCsFRw09WS81qDa2Q-k/exec';
 const N = {
-  SALVADOR: 'Salvador Sánchez Bonet',
-  MARIPAZ:  'Mari Paz García Saez',
+  ANA:   'Ana López Martín',
+  DIEGO: 'Diego Pérez Ruiz',
 };
 
 /* === CÁMARA === */
@@ -76,7 +76,7 @@ function snapshotB64() {
   const ctx = c.getContext('2d');
   ctx.translate(w,0); ctx.scale(-1,1);      // espejo para coincidir con preview
   ctx.drawImage(videoEl, 0, 0, w, h);
-  return c.toDataURL('image/jpeg', 0.7).split(',')[1]; // JPG ligero
+  return c.toDataURL('image/jpeg', 0.7).split(',')[1]; // JPG ligero (solo base64)
 }
 
 /* === ENVÍO === */
