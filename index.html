@@ -6,8 +6,13 @@
 <title>Fichaje con foto</title>
 <style>
   :root { --gap:14px; --r:16px; --w:560px; --btnH:48px; }
-  *{box-sizing:border-box} body{margin:0;font-family:system-ui,Arial,sans-serif;background:#f4f6f8;color:#111;min-height:100dvh;display:grid;place-items:center}
-  .card{width:100%;max-width:var(--w);background:#fff;border-radius:var(--r);box-shadow:0 6px 24px rgba(0,0,0,.08);padding:16px}
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:system-ui,Arial,sans-serif; background:#f4f6f8; color:#111;
+    min-height:100dvh; display:grid; place-items:center;
+  }
+  .card{width:100%;max-width:var(--w);background:#fff;border-radius:var(--r);
+    box-shadow:0 6px 24px rgba(0,0,0,.08);padding:16px}
   .row{display:flex;gap:var(--gap);align-items:center;margin-bottom:var(--gap)}
   .row>label{min-width:96px;font-weight:600}
   input,select{width:100%;padding:10px 12px;border:1px solid #d7dde4;border-radius:10px;font-size:16px}
@@ -21,13 +26,28 @@
 <body>
   <div class="card">
     <h2>Fichaje con foto</h2>
-    <div class="row"><label>Nombre</label><input id="nombre" placeholder="Nombre y apellidos" autocomplete="name"/></div>
-    <div class="row"><label>Tipo</label>
-      <select id="tipo"><option value="entrada">entrada</option><option value="salida">salida</option></select>
+
+    <div class="row">
+      <label>Nombre</label>
+      <input id="nombre" placeholder="Nombre y apellidos" autocomplete="name" />
     </div>
-    <div class="row"><label>Sin pausa</label><input type="checkbox" id="sinPausa"/></div>
+
+    <div class="row">
+      <label>Tipo</label>
+      <select id="tipo">
+        <option value="entrada">entrada</option>
+        <option value="salida">salida</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <label>Sin pausa</label>
+      <input type="checkbox" id="sinPausa" />
+    </div>
+
     <video id="video" playsinline autoplay muted></video>
     <canvas id="canvas" hidden></canvas>
+
     <div style="height:12px"></div>
     <button class="primary" id="btn">Fichar con foto</button>
     <div class="status" id="status"></div>
@@ -35,17 +55,37 @@
 
 <script>
 /** CONFIG **/
-const ENDPOINT = 'PON_AQUI_TU_URL_WEBAPP/exec'; // Google Apps Script desplegado como "Cualquiera, incluso anónimo"
+const ENDPOINT = 'PON_AQUI_TU_URL_WEBAPP/exec';  // GAS Web App “Cualquiera, incluso anónimo”
 const TARGET_WIDTH = 640;
 const JPEG_QUALITY = 0.6;
 
-const el=(id)=>document.getElementById(id);
+const el=id=>document.getElementById(id);
 const video=el('video'), canvas=el('canvas'), btn=el('btn'), statusEl=el('status');
+
+let audioUnlocked=false;
+function unlockAudioOnce(){
+  if (audioUnlocked) return;
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;
+    const a=new AC(); const o=a.createOscillator(); const g=a.createGain();
+    o.connect(g); g.connect(a.destination); g.gain.value=0; o.start(); o.stop(0); a.close();
+    audioUnlocked=true;
+  }catch(_){}
+}
+function beepOk(){
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;
+    const a=new AC(); const o=a.createOscillator(); const g=a.createGain();
+    o.connect(g); g.connect(a.destination);
+    o.type='sine'; o.frequency.value=880; g.gain.setValueAtTime(0.06,a.currentTime);
+    o.start(); setTimeout(()=>{o.stop(); a.close();},120);
+  }catch(_){}
+}
 
 async function initCamera(){
   try{
     const stream=await navigator.mediaDevices.getUserMedia({
-      video:{ facingMode:'user', width:{ideal:1280}, height:{ideal:720} }, audio:false
+      video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}}, audio:false
     });
     video.srcObject=stream;
   }catch(e){ setStatus('Sin acceso a cámara', true); }
@@ -62,14 +102,6 @@ function captureToDataURL(){
   return canvas.toDataURL('image/jpeg', JPEG_QUALITY);
 }
 
-function beepOk(){
-  const AC=window.AudioContext||window.webkitAudioContext;
-  const a=new AC(); const o=a.createOscillator(); const g=a.createGain();
-  o.connect(g); g.connect(a.destination);
-  o.type='sine'; o.frequency.value=880; g.gain.setValueAtTime(0.05,a.currentTime);
-  o.start(); setTimeout(()=>{o.stop(); a.close();}, 120);
-}
-
 function setStatus(msg,isErr=false){ statusEl.textContent=msg; statusEl.className='status '+(isErr?'err':'ok'); }
 
 function jsonp(url, onDone){
@@ -77,24 +109,42 @@ function jsonp(url, onDone){
   window[cb]=(data)=>{ try{ onDone(data); } finally{ delete window[cb]; s.remove(); } };
   const s=document.createElement('script');
   s.src=url+(url.includes('?')?'&':'?')+'callback='+cb;
+  s.onerror=()=>{ try{ onDone({ok:false,error:'JSONP error'}); } finally{ delete window[cb]; s.remove(); } };
   document.head.appendChild(s);
 }
 
 async function postJSON(url, payload, timeoutMs=15000){
-  const ctrl=new AbortController();
-  const to=setTimeout(()=>ctrl.abort(), timeoutMs);
+  const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(), timeoutMs);
   try{
-    const res=await fetch(url,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload), signal:ctrl.signal });
+    const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:ctrl.signal});
     const json=await res.json().catch(()=>({ok:false,error:'Respuesta inválida'}));
     return json;
   } finally { clearTimeout(to); }
 }
 
-btn.addEventListener('click', ()=>{
+/** Confirmación robusta: reintentos JSONP a GAS ?check=1 */
+function confirmReceipt(nombre, afterIso, attempts=8, delayMs=400){
+  return new Promise((resolve)=>{
+    const tryOnce=(left)=>{
+      const u=`${ENDPOINT}?check=1&nombre=${encodeURIComponent(nombre)}&after=${encodeURIComponent(afterIso)}`;
+      jsonp(u, (r)=>{
+        if (r && r.ok){ resolve(true); }
+        else if (left>1){ setTimeout(()=>tryOnce(left-1), delayMs); }
+        else { resolve(false); }
+      });
+    };
+    tryOnce(attempts);
+  });
+}
+
+btn.addEventListener('click', async ()=>{
+  unlockAudioOnce();
   const nombre=(el('nombre').value||'').trim();
   const tipo=el('tipo').value;
   const sinPausa=el('sinPausa').checked;
   if(!nombre){ setStatus('Falta nombre', true); return; }
+
+  const afterIso=new Date().toISOString(); // para confirmación
 
   setStatus('Enviando…');
 
@@ -102,15 +152,22 @@ btn.addEventListener('click', ()=>{
   const url = `${ENDPOINT}?nombre=${encodeURIComponent(nombre)}&tipo=${encodeURIComponent(tipo)}&sinPausa=${sinPausa?'true':'false'}`;
   jsonp(url, async (r)=>{
     if(!r || !r.ok){ setStatus((r && (r.msg||r.error)) || 'Error', true); return; }
-    setStatus(`OK ${r.hora}`); // UI inmediata
-    try { beepOk(); } catch(_) {}
 
-    // Fase 2 (asíncrona): subir la foto con token
+    // OK inmediato + beep
+    setStatus(`OK ${r.hora}`);
+    beepOk();
+
+    // Fase 2: foto en background (no bloquea UI)
     try{
       const fotoDataURL = captureToDataURL();
-      const resp = await postJSON(ENDPOINT, { token: r.token, photo: fotoDataURL });
-      if(!resp.ok){ console.log('Foto cola error:', resp.error||resp.msg); }
-    }catch(err){ console.log('Foto cola err:', err && err.message); }
+      postJSON(ENDPOINT, { token: r.token, photo: fotoDataURL })
+        .then(res=>{ if(!res.ok) console.log('Foto en cola error:', res.error||res.msg); })
+        .catch(e=>console.log('Foto en cola err:', e && e.message));
+    }catch(e){ console.log('Sin foto:', e && e.message); }
+
+    // Confirmación silenciosa para logs (evita falsos “no confirmado”)
+    const ok = await confirmReceipt(nombre, afterIso, 8, 400);
+    if(!ok){ console.log(`${nombre} — no confirmado (revisa conexión)`); }
   });
 });
 
