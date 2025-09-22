@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Fichaje (foto)</title>
+<title>Fichaje</title>
 <style>
   :root { --gap:12px; --radius:14px; --statusH:48px; }
   *{ box-sizing:border-box; }
@@ -12,21 +12,16 @@
     background:#f4f6f8; color:#111; font-family:system-ui, Arial, sans-serif;
     min-height:100dvh; padding:var(--gap);
     padding-bottom: calc(var(--gap) + var(--statusH));
-    display:grid; place-items:center;
   }
-  .wrap{
-    width:100%; max-width:560px; background:#fff; border-radius:var(--radius);
-    box-shadow:0 6px 20px rgba(0,0,0,.08); padding:16px;
-  }
-  h1{ margin:0 0 8px 0; font-size:18px; font-weight:700; }
-  .row{ display:flex; gap:10px; margin:10px 0; }
-  input{ flex:1; font-size:16px; padding:12px; border-radius:12px; border:1px solid #ddd; }
-  label{ display:flex; align-items:center; gap:8px; font-size:14px; color:#333; }
-  button{ cursor:pointer; border:none; font-size:16px; padding:12px 18px; border-radius:12px; color:#fff; }
-  .in{ background:#0d6efd; }
-  .out{ background:#dc3545; }
+  h1{ margin:0 0 8px 0; font-size:18px; font-weight:700; text-align:center; }
   video{ width:100%; border-radius:12px; background:#000; aspect-ratio:16/9; }
-  .actions{ display:flex; justify-content:space-between; gap:10px; margin-top:10px; }
+  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+  button{
+    cursor:pointer; border:none; font-size:16px; padding:16px;
+    border-radius:12px; font-weight:600; color:#fff;
+  }
+  .in { background:#28a745; }
+  .out{ background:#dc3545; }
   .status{
     position:fixed; left:0; right:0; bottom:0; height:var(--statusH);
     background:#10151a; color:#fff; display:flex; align-items:center; justify-content:center;
@@ -37,27 +32,23 @@
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Fichaje con foto</h1>
-    <div class="row">
-      <input id="nombre" placeholder="Nombre y apellidos" autocomplete="off" />
-    </div>
-    <div class="row">
-      <label><input type="checkbox" id="sinPausa" /> Sin pausa</label>
-    </div>
+  <h1>Fichaje</h1>
+  <video id="cam" playsinline autoplay muted></video>
 
-    <video id="cam" playsinline autoplay muted></video>
-
-    <div class="actions">
-      <button class="in"  id="btnEntrada">Fichar ENTRADA</button>
-      <button class="out" id="btnSalida">Fichar SALIDA</button>
-    </div>
-  </div>
+  <div class="grid" id="buttons"></div>
 
   <div id="status" class="status">Preparado</div>
 
 <script>
-const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxlR17AJQw87pZgALcfRTE__1ud65aXrRj7B0OG7tu3Lj5s1bCsFRw09WS81qDa2Q-k/exec'; // ← pon tu URL
+const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxlR17AJQw87pZgALcfRTE__1ud65aXrRj7B0OG7tu3Lj5s1bCsFRw09WS81qDa2Q-k/exec';
+
+// Trabajadores exactos (como en tu hoja):
+const trabajadores = [
+  "Ana Lopez Martin",
+  "Carla Gomez Torres",
+  "Luis Fernandez Diaz",
+  "Diego Perez Ruiz"
+];
 
 const $ = (s)=>document.querySelector(s);
 const statusEl = $('#status');
@@ -65,8 +56,13 @@ const statusEl = $('#status');
 let stream;
 initCam();
 
-$('#btnEntrada').onclick = ()=>fichar('entrada');
-$('#btnSalida').onclick  = ()=>fichar('salida');
+// Genera los botones Entrada/Salida para cada trabajador
+const cont = document.getElementById('buttons');
+trabajadores.forEach(n=>{
+  const bIn  = document.createElement('button'); bIn.className='in';  bIn.textContent = `${n} — Entrada`; bIn.onclick=()=>fichar(n,'entrada');
+  const bOut = document.createElement('button'); bOut.className='out'; bOut.textContent= `${n} — Salida`;  bOut.onclick=()=>fichar(n,'salida');
+  cont.appendChild(bIn); cont.appendChild(bOut);
+});
 
 async function initCam(){
   try{
@@ -77,35 +73,25 @@ async function initCam(){
   }
 }
 
-async function fichar(tipo){
-  const nombre = String($('#nombre').value||'').trim();
-  if (!nombre){ setStatus('Escribe el nombre', true); return; }
-
+async function fichar(nombre,tipo){
   setStatus('Enviando…');
-
-  // 1) Foto a base64 (JPEG)
-  const b64 = await snapshotBase64($('#cam'));
-
-  // 2) Marca temporal para confirmar en hoja
+  const photoB64 = await snapshotBase64($('#cam'));
   const afterIso = new Date().toISOString();
 
-  // 3) POST rápido (no bloquea UI)
   try{
     await fetch(WEBAPP_URL, {
-      method:'POST',
-      mode:'no-cors',
+      method:'POST', mode:'no-cors',
       headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ nombre, tipo, sinPausa: $('#sinPausa').checked, photo: b64 })
+      body: JSON.stringify({ nombre, tipo, photo: photoB64 })
     });
-  }catch(_){ /* seguimos a JSONP */ }
+  }catch(_){}
 
-  // 4) Confirmación JSONP de fila escrita en Sheets
   try{
     await jsonpCheck({ nombre, tipo, afterIso }, 6000);
     const hhmm = new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    setStatus(`OK ${nombre} — ${hhmm}`, false, true); // beep
+    setStatus(`OK ${nombre} — ${hhmm}`, false, true);
   }catch(_){
-    setStatus('No confirmado (reintenta o revisa conexión)', true);
+    setStatus('No confirmado (reintenta)', true);
   }
 }
 
@@ -145,7 +131,6 @@ function setStatus(txt, error=false, beep=false){
   if (beep) playBeep();
 }
 
-// Beep WebAudio (sin archivos)
 function playBeep(){
   const ctx = new (window.AudioContext||window.webkitAudioContext)();
   const o = ctx.createOscillator(), g = ctx.createGain();
