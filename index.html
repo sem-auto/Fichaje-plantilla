@@ -1,43 +1,26 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Fichaje</title>
 <style>
-  :root{
-    --green:#24a148; --green-d:#1c7f38;
-    --red:#d13b3b;  --red-d:#a12f2f;
-    --panel:#ffffff; --bg:#f2f4f8; --ink:#111;
-  }
+  :root{--bg:#edf0f3;--card:#fff;--ink:#111;--ok:#1fa354;--ok2:#168041;--err:#d33c3c;--err2:#a32e2e;}
   html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
-  .wrap{max-width:1100px;margin:24px auto;padding:16px;background:var(--panel);border-radius:16px;box-shadow:0 2px 22px rgba(0,0,0,.08)}
-  h1{margin:0 0 14px 0;text-align:center;font-size:28px}
-  /* cámara */
-  .cam{width:100%;height:460px;background:#000;border-radius:12px;overflow:hidden}
-  video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);} /* selfie */
+  .wrap{max-width:1080px;margin:18px auto;padding:16px;background:var(--card);border-radius:16px;box-shadow:0 2px 22px rgba(0,0,0,.08)}
+  h1{margin:6px 0 14px 0;text-align:center;font-size:28px}
+  .cam{width:100%;height:470px;background:#000;border-radius:12px;overflow:hidden}
+  video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)} /* selfie */
   canvas{display:none}
-  /* botones 2 columnas */
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
-  .btn{
-    width:100%; display:block; text-align:center; font-weight:800; font-size:22px;
-    padding:18px 14px; border-radius:14px; border:none; cursor:pointer;
-    color:#fff; letter-spacing:.3px; box-shadow:0 2px 0 rgba(0,0,0,.18) inset;
-  }
-  .in { background:var(--green); }
-  .in:hover { background:var(--green-d); }
-  .out { background:var(--red); }
-  .out:hover { background:var(--red-d); }
-
-  /* barra de estado inferior */
-  .status{
-    position:fixed; left:0; right:0; bottom:0; padding:10px 16px;
-    background:#7a1a1a; color:#fff; font-weight:700; text-align:left;
-    display:flex; align-items:center; gap:10px; min-height:44px;
-  }
-  .status.ok{ background:#135d2e; }
-  .status.err{ background:#7a1a1a; }
-  .status small{font-weight:600; opacity:.85}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+  .btn{display:block;width:100%;padding:18px 14px;border-radius:14px;border:none;font-weight:800;
+       font-size:22px;color:#fff;cursor:pointer;letter-spacing:.2px}
+  .in{background:var(--ok)} .in:hover{background:var(--ok2)}
+  .out{background:var(--err)} .out:hover{background:var(--err2)}
+  .statusBox{margin-top:14px;background:#fff;border:1px solid #e6e6e6;border-radius:12px;padding:10px 14px;
+             font-weight:800;display:flex;align-items:center;gap:10px}
+  .statusBox.ok{border-color:#cfeeda;background:#f4fbf6;color:#125b31}
+  .statusBox.err{border-color:#ffd1cf;background:#fff7f6;color:#8a2323}
+  .muted{font-weight:600;color:#666;font-size:12px}
 </style>
 </head>
 <body>
@@ -46,42 +29,52 @@
 
     <div class="cam"><video id="cam" autoplay muted playsinline></video><canvas id="snap"></canvas></div>
 
-    <div class="grid" id="buttons">
-      <!-- izquierda (entradas) -->
-      <button class="btn in"  onclick="fichar('Ana Lopez Martin','entrada')">Ana Lopez Martin — Entrada</button>
-      <button class="btn out" onclick="fichar('Ana Lopez Martin','salida')">Ana Lopez Martin — Salida</button>
+    <div class="grid">
+      <!-- IZQUIERDA (ENTRADA) -->
+      <button class="btn in"  onclick="fichar('Ana López Martín','entrada')">Ana López Martín — Entrada</button>
+      <button class="btn out" onclick="fichar('Ana López Martín','salida')">Ana López Martín — Salida</button>
 
-      <button class="btn in"  onclick="fichar('Carla Gomez Torres','entrada')">Carla Gomez Torres — Entrada</button>
-      <button class="btn out" onclick="fichar('Carla Gomez Torres','salida')">Carla Gomez Torres — Salida</button>
+      <button class="btn in"  onclick="fichar('Carla Gómez Torres','entrada')">Carla Gómez Torres — Entrada</button>
+      <button class="btn out" onclick="fichar('Carla Gómez Torres','salida')">Carla Gómez Torres — Salida</button>
 
-      <button class="btn in"  onclick="fichar('Luis Fernandez Diaz','entrada')">Luis Fernandez Diaz — Entrada</button>
-      <button class="btn out" onclick="fichar('Luis Fernandez Diaz','salida')">Luis Fernandez Diaz — Salida</button>
+      <button class="btn in"  onclick="fichar('Luis Fernández Díaz','entrada')">Luis Fernández Díaz — Entrada</button>
+      <button class="btn out" onclick="fichar('Luis Fernández Díaz','salida')">Luis Fernández Díaz — Salida</button>
 
-      <button class="btn in"  onclick="fichar('Diego Perez Ruiz','entrada')">Diego Perez Ruiz — Entrada</button>
-      <button class="btn out" onclick="fichar('Diego Perez Ruiz','salida')">Diego Perez Ruiz — Salida</button>
+      <button class="btn in"  onclick="fichar('Diego Pérez Ruiz','entrada')">Diego Pérez Ruiz — Entrada</button>
+      <button class="btn out" onclick="fichar('Diego Pérez Ruiz','salida')">Diego Pérez Ruiz — Salida</button>
+    </div>
+
+    <div id="status" class="statusBox">
+      <div id="sMain">Listo</div>
+      <div class="muted" id="sSub"></div>
     </div>
   </div>
 
-  <div id="status" class="status"><span id="sMsg">Listo</span> <small id="sSub"></small></div>
-
-  <!-- beep -->
-  <audio id="beep"
-    src="data:audio/wav;base64,UklGRhQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABYAAAAAAABmZmZmZmZmZmZmZmYA"
-    preload="auto"></audio>
+  <!-- Beep corto -->
+  <audio id="beep" preload="auto"
+    src="data:audio/wav;base64,UklGRhQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABYAAAAAAABmZmZmZmZmZmZmZmYA"></audio>
 
 <script>
-/* ======= CONFIG ======= */
+/*** CONFIG ***/
 const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxlR17AJQw87pZgALcfRTE__1ud65aXrRj7B0OG7tu3Lj5s1bCsFRw09WS81qDa2Q-k/exec';
 
-/* ======= Cámara (selfie; si falla, trasera) ======= */
+/*** Util: normalización de nombre (igual que GAS) ***/
+function normalizeNameJS(s){
+  if(!s) return '';
+  let n = String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+          .replace(/\s+/g,' ').trim().toLowerCase();
+  return n.replace(/\b\w/g,c=>c.toUpperCase());
+}
+function hhmmss(){ return new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+
+/*** Cámara (selfie → si falla, trasera) ***/
 (async function initCam(){
   const v = document.getElementById('cam');
   const a = { video:{ facingMode:'user', width:{ideal:1280}, height:{ideal:720} }, audio:false };
   const b = { video:{ facingMode:'environment', width:{ideal:1280}, height:{ideal:720} }, audio:false };
   try { v.srcObject = await navigator.mediaDevices.getUserMedia(a); }
-  catch (_) { v.srcObject = await navigator.mediaDevices.getUserMedia(b); v.style.transform=''; }
+  catch(_) { v.srcObject = await navigator.mediaDevices.getUserMedia(b); v.style.transform=''; }
 })();
-
 function snapshotBase64(){
   const v=document.getElementById('cam'), c=document.getElementById('snap');
   const w=v.videoWidth||1280, h=v.videoHeight||720, maxW=960, sc=Math.min(1, maxW/w);
@@ -95,43 +88,45 @@ function snapshotBase64(){
   return c.toDataURL('image/jpeg',0.85);
 }
 
-/* ======= JSONP check (solo memoria) con reintentos rápidos ======= */
-function jsonpCheck(nombre, timeoutMs=9000){
-  const deadline = Date.now()+timeoutMs;
+/*** Estado UI ***/
+const sBox = document.getElementById('status');
+const sMain= document.getElementById('sMain');
+const sSub = document.getElementById('sSub');
+function setStatus(msg, kind='info', sub=''){
+  sMain.textContent = msg; sSub.textContent = sub || '';
+  sBox.classList.remove('ok','err');
+  if(kind==='ok') sBox.classList.add('ok');
+  if(kind==='err') sBox.classList.add('err');
+}
+
+/*** JSONP check (solo memoria) — agresivo ***/
+function jsonpCheck(nombre, timeoutMs=7000){
+  const deadline = Date.now() + timeoutMs;
   return new Promise((resolve,reject)=>{
     const poll=()=>{
       const cb='cb'+Math.random().toString(36).slice(2);
       const s=document.createElement('script');
       const url=`${WEBAPP_URL}?check=1&nombre=${encodeURIComponent(nombre)}&t=${Date.now()}&callback=${cb}`;
-      const to=setTimeout(()=>{ cleanup(); next(); }, 900);
-      window[cb]=(r)=>{ cleanup(); (r&&r.ok)?resolve():next(); };
+      const to=setTimeout(()=>{ cleanup(); next(); }, 800);
+      window[cb]=(r)=>{ cleanup(); if(r&&r.ok){ resolve(r); } else { next(); } };
       s.src=url; s.onerror=()=>{ cleanup(); next(); };
       document.body.appendChild(s);
       function cleanup(){ clearTimeout(to); delete window[cb]; s.remove(); }
-      function next(){ (Date.now()>=deadline)?reject(new Error('timeout')):setTimeout(poll,280); }
+      function next(){ if(Date.now()>=deadline) reject(new Error('timeout')); else setTimeout(poll,250); }
     };
     poll();
   });
 }
 
-/* ======= UI helpers ======= */
-const sBar = document.getElementById('status');
-const sMsg = document.getElementById('sMsg');
-const sSub = document.getElementById('sSub');
-function setStatus(text, kind='info', sub=''){
-  sMsg.textContent = text; sSub.textContent=sub||'';
-  sBar.classList.remove('ok','err');
-  if(kind==='ok') sBar.classList.add('ok');
-  if(kind==='err') sBar.classList.add('err');
-}
-function hhmmss(){ return new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+/*** Fichaje ***/
+async function fichar(nombreOriginal, tipo){
+  // Normaliza el nombre ANTES de enviar/chequear para que case con GAS
+  const nombre = normalizeNameJS(nombreOriginal);
 
-/* ======= Fichaje ======= */
-async function fichar(nombre, tipo){
   setStatus(`${nombre} — enviando…`, 'info', hhmmss());
   const photoB64 = snapshotBase64();
 
-  // POST rápido (no-cors); la confirmación viene por JSONP memoria
+  // POST rápido sin preflight (text/plain)
   try{
     await fetch(WEBAPP_URL, {
       method:'POST', mode:'no-cors',
@@ -140,15 +135,15 @@ async function fichar(nombre, tipo){
     });
   }catch(_){}
 
-  // espera mínima antes de comprobar
-  await new Promise(r=>setTimeout(r, 500));
+  // margen corto
+  await new Promise(r=>setTimeout(r, 300));
 
   try{
-    await jsonpCheck(nombre, 9000);
+    const r = await jsonpCheck(nombre, 7000);
     setStatus(`OK ${nombre} — ${hhmmss()} — enviado`, 'ok');
-    const b=document.getElementById('beep'); b.currentTime=0; b.play().catch(()=>{});
+    const beep=document.getElementById('beep'); beep.currentTime=0; beep.play().catch(()=>{});
   }catch(_){
-    setStatus(`${nombre} — no confirmado (reintenta)`, 'err');
+    setStatus(`${nombre} — no confirmado (revisa conexión)`, 'err');
   }
 }
 </script>
