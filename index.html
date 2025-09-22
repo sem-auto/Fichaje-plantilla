@@ -5,57 +5,56 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>Fichaje (foto)</title>
 <style>
-  :root { --gap:14px; --radius:16px; --statusH:54px; }
+  :root { --gap:12px; --radius:14px; --statusH:48px; }
   *{ box-sizing:border-box; }
   html,body{ height:100%; margin:0; }
   body{
     background:#f4f6f8; color:#111; font-family:system-ui, Arial, sans-serif;
     min-height:100dvh; padding:var(--gap);
-    padding-bottom: calc(var(--gap) + var(--statusH));
+    padding-bottom: calc(var(--gap) + var(--statusH)); /* hueco para barra fija */
   }
-  header{ text-align:center; font-weight:800; font-size:22px; margin-bottom:var(--gap); }
+  header{ text-align:center; font-weight:800; font-size:20px; margin-bottom:var(--gap); }
   main{ max-width:900px; margin:0 auto; display:grid; gap:var(--gap); }
 
-  /* === CÁMARA: bloque fijo, sin solapes aunque no tenga permisos === */
+  /* Cámara: más baja, nunca pisa botones */
   .cam{ display:grid; gap:10px; }
   .cam-inner{
     position:relative; width:100%;
-    /* altura estable: no invade botones */
-    height: clamp(220px, 40vh, 420px);
+    height: clamp(200px, 35vh, 360px);
     background:#000; border-radius:var(--radius); overflow:hidden;
   }
   .placeholder{
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    color:#bbb; font-size:14px; text-align:center; padding:10px;
+    color:#bbb; font-size:13px; text-align:center; padding:10px;
   }
   video{
-    position:absolute; inset:0;
-    width:100%; height:100%; object-fit:cover; transform:scaleX(-1);
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover; transform:scaleX(-1);
   }
   .ghost{
     background:#111; color:#fff; border:0; border-radius:var(--radius);
-    padding:14px; font-size:18px; font-weight:700; cursor:pointer;
+    padding:12px; font-size:16px; font-weight:700; cursor:pointer;
   }
 
-  /* === BOTONES: nunca se solapan === */
+  /* Botones: más pequeños, caben todos; scroll si hace falta */
   .grid{ display:grid; gap:var(--gap); grid-template-columns:1fr 1fr; }
   @media (max-width:900px){ .grid{ grid-template-columns:1fr; } }
   button.in,button.out{
     width:100%; border:0; border-radius:var(--radius);
-    font-size:20px; font-weight:800; cursor:pointer; padding:0 18px;
-    height:88px;   /* altura táctil estable */
+    font-size:18px; font-weight:800; cursor:pointer; padding:0 16px;
+    height:64px;   /* antes 88px */
   }
   .in{ background:#16a34a; color:#fff; }
   .out{ background:#dc2626; color:#fff; }
-  button:active{ transform:scale(.98); }
+  button:active{ transform:scale(.985); }
 
-  /* === Barra de estado fija === */
+  /* Barra de estado fija inferior */
   .status{
     position:fixed; left:0; right:0; bottom:0; height:var(--statusH);
     display:flex; align-items:center; justify-content:center;
     background:#fff; border-top:1px solid #ddd;
-    font-family:ui-monospace, Menlo, Consolas, monospace; font-size:15px; text-align:center;
-    padding:0 10px;
+    font-family:ui-monospace, Menlo, Consolas, monospace; font-size:14px;
+    padding:0 10px; text-align:center;
   }
 </style>
 </head>
@@ -98,7 +97,7 @@ const N = {
   LUIS:  'Luis Fernández Díaz',
 };
 
-/* === Cámara (sin solapes) === */
+/* === Cámara === */
 let stream = null;
 const videoEl  = document.getElementById('preview');
 const phEl     = document.getElementById('ph');
@@ -123,49 +122,62 @@ async function startCam(){
 btnCam.addEventListener('click', startCam);
 if (location.protocol === 'https:') startCam();
 
-/* === Captura reducida (rápida) === */
+/* === Audio: asegurar beep en móviles (crear contexto tras 1º gesto) === */
+let audioCtx = null;
+function ensureAudio(){
+  if (!audioCtx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    try { audioCtx = new Ctx(); } catch(_) {}
+  }
+}
+window.addEventListener('pointerdown', ensureAudio, { once:true });
+
+function beep(ms=120, freq=880, vol=0.2){ // más volumen
+  try{
+    ensureAudio(); if (!audioCtx) return;
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type='sine'; o.frequency.value=freq; g.gain.value=vol;
+    o.connect(g); g.connect(audioCtx.destination); o.start();
+    setTimeout(()=>{ o.stop(); }, ms);
+  }catch(_){}
+}
+
+/* === Captura reducida (más rápida) === */
 function snapshotDataURL(){
   const srcW = videoEl.videoWidth || 640, srcH = videoEl.videoHeight || 480;
-  const maxW = 800;
+  const maxW = 640;                    // antes 800 → menos peso
   const scale = Math.min(1, maxW / srcW);
   const w = Math.round(srcW * scale), h = Math.round(srcH * scale);
   const c = document.createElement('canvas'); c.width=w; c.height=h;
   const ctx = c.getContext('2d');
   ctx.translate(w,0); ctx.scale(-1,1);
   ctx.drawImage(videoEl, 0, 0, w, h);
-  return c.toDataURL('image/jpeg', 0.7);
-}
-
-/* === Beep éxito === */
-function beep(ms=120, freq=880, vol=0.07){
-  try{
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    const ctx = new Ctx();
-    const o = ctx.createOscillator(), g = ctx.createGain();
-    o.type='sine'; o.frequency.value=freq; g.gain.value=vol;
-    o.connect(g); g.connect(ctx.destination); o.start();
-    setTimeout(()=>{ o.stop(); ctx.close(); }, ms);
-  }catch(_){}
+  return c.toDataURL('image/jpeg', 0.6); // calidad 0.6 para subir más rápido
 }
 
 /* === Envío === */
+let sending = false;
 async function fichar(nombre, tipo){
   try{
-    if (!stream) { await startCam(); if (!stream) return; }
+    if (sending) return; sending = true;
+    if (!stream) { await startCam(); if (!stream){ sending=false; return; } }
+
     const dataUrl = snapshotDataURL();
     const fd = new FormData();
     fd.append('nombre', nombre);
     fd.append('tipo',   tipo);
-    fd.append('photo',  dataUrl);   // dataURL completo
+    fd.append('photo',  dataUrl);
 
     setStatus(`Enviando: ${nombre} — ${tipo}...`);
     await fetch(WEBAPP_URL, { method:'POST', mode:'no-cors', body: fd });
 
-    if (navigator.vibrate) navigator.vibrate(60);
-    beep();
+    if (navigator.vibrate) navigator.vibrate(50);
+    beep();                                  // beep en “éxito” (tras user-gesture previo)
     setStatus(`✔ OK ${nombre} — ${tipo}`);
   }catch(e){
     setStatus('Error: ' + e.message);
+  }finally{
+    sending = false;
   }
 }
 
