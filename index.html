@@ -2,36 +2,47 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Fichaje (Foto automática)</title>
   <style>
-    :root { --gap: 16px; }
+    :root { --gap: 12px; }
     * { box-sizing: border-box; }
-    body { margin:0; font-family: system-ui, Arial, sans-serif; background:#f4f6f8; color:#111; }
-    .wrap { max-width: 720px; margin: 0 auto; padding: 24px; display:grid; gap: var(--gap); }
-    h1 { text-align:center; margin:0 0 8px; font-size: 28px; }
-    .card { background:#fff; border-radius:14px; padding:16px; box-shadow:0 6px 18px rgba(0,0,0,.06); }
-    .grid { display:grid; grid-template-columns: 1fr 1fr; gap: var(--gap); }
-    button { padding:18px; font-size:18px; font-weight:700; border:0; border-radius:14px; cursor:pointer; }
+    html, body { height:100%; }
+    body {
+      margin:0; background:#f4f6f8; color:#111; font-family: system-ui, Arial, sans-serif;
+      height:100svh; overflow:hidden;
+    }
+    .wrap {
+      height:100%; max-width:720px; margin:0 auto; padding:12px;
+      display:grid; grid-template-rows:auto 1fr auto; gap:var(--gap);
+    }
+    h1 { margin:0; font-size:22px; text-align:center; }
+    .card { background:#fff; border-radius:12px; padding:12px; box-shadow:0 4px 12px rgba(0,0,0,.06); }
+    .camera {
+      display:grid; grid-template-rows:1fr auto; gap:8px; min-height:38vh; max-height:45vh;
+    }
+    video { width:100%; height:100%; object-fit:cover; background:#000; border-radius:10px; transform:scaleX(-1); }
+    .grid {
+      display:grid; grid-template-columns:1fr 1fr; gap:var(--gap);
+      grid-auto-rows:1fr; /* botones a la misma altura */
+    }
+    button {
+      width:100%; height:100%;
+      border:0; border-radius:12px; font-size:16px; font-weight:700; cursor:pointer; padding:12px;
+    }
     .in  { background:#16a34a; color:#fff; }
     .out { background:#dc2626; color:#fff; }
     .ghost { background:#111; color:#fff; }
-    video { width:100%; max-height:340px; background:#000; border-radius:12px; transform: scaleX(-1); }
-    .status { font-family: ui-monospace, Menlo, Consolas, monospace; font-size:14px; white-space:pre-wrap; }
+    .status { font-family: ui-monospace, Menlo, Consolas, monospace; font-size:13px; white-space:pre-wrap; }
   </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Fichaje</h1>
 
-  <div class="card">
+  <div class="card camera">
     <video id="preview" playsinline autoplay muted></video>
-    <div style="margin-top:10px">
-      <button class="ghost" id="btnCam" type="button">Activar cámara</button>
-    </div>
+    <button class="ghost" id="btnCam" type="button">Activar cámara</button>
   </div>
 
   <div class="grid">
@@ -64,6 +75,7 @@ const N = {
 /* === CÁMARA === */
 let stream = null;
 const videoEl = document.getElementById('preview');
+const statusEl = document.getElementById('status');
 
 async function startCam() {
   try {
@@ -73,39 +85,66 @@ async function startCam() {
     await videoEl.play();
     setStatus('Cámara activa.');
   } catch (e) {
-    setStatus('Permite la cámara en Chrome/Edge (candado → Permisos → Cámara: Permitir). Error: ' + e.message);
+    setStatus('Permite la cámara (candado → Permisos → Cámara: Permitir). Error: ' + e.message);
   }
 }
 document.getElementById('btnCam').addEventListener('click', startCam);
 if (location.protocol === 'https:') startCam();
 
-function snapshotB64() {
-  const w = videoEl.videoWidth || 640, h = videoEl.videoHeight || 480;
+/* === CAPTURA (reducida para velocidad) === */
+function snapshotDataURL() {
+  const srcW = videoEl.videoWidth || 640, srcH = videoEl.videoHeight || 480;
+  const maxW = 800; // reduce tamaño → sube más rápido
+  const scale = Math.min(1, maxW / srcW);
+  const w = Math.round(srcW * scale), h = Math.round(srcH * scale);
+
   const c = document.createElement('canvas'); c.width=w; c.height=h;
   const ctx = c.getContext('2d');
   ctx.translate(w,0); ctx.scale(-1,1);
   ctx.drawImage(videoEl, 0, 0, w, h);
-  return c.toDataURL('image/jpeg', 0.7).split(',')[1];
+  return c.toDataURL('image/jpeg', 0.7); // dataURL completo
+}
+
+/* === BEEP éxito === */
+function beep(ms=130, freq=880, type='sine', vol=0.06){
+  try{
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new Ctx();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.value = vol;
+    o.connect(g); g.connect(ctx.destination);
+    o.start();
+    setTimeout(()=>{ o.stop(); ctx.close(); }, ms);
+  }catch(_){}
 }
 
 /* === ENVÍO === */
 async function fichar(nombre, tipo) {
   try {
     if (!stream) { await startCam(); if (!stream) return; }
+    const dataUrl = snapshotDataURL();
+
+    // FormData (no-cors): Apps Script acepta 'photo' o 'fotoBase64'
     const fd = new FormData();
     fd.append('nombre', nombre);
     fd.append('tipo',   tipo);
-    fd.append('photo',  snapshotB64());
+    fd.append('photo',  dataUrl); // enviar dataURL completo
+
     setStatus(`Enviando: ${nombre} — ${tipo}...`);
     await fetch(WEBAPP_URL, { method:'POST', mode:'no-cors', body: fd });
+
     if (navigator.vibrate) navigator.vibrate(60);
+    beep(); // beep al completar sin error
     setStatus('OK ' + nombre + ' — ' + tipo + ' (enviado)');
   } catch (e) {
     setStatus('Error: ' + e.message);
   }
 }
 
-function setStatus(m){ document.getElementById('status').textContent = m; }
+function setStatus(m){ statusEl.textContent = m; }
 </script>
 </body>
 </html>
+
