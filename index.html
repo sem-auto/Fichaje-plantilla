@@ -5,24 +5,34 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>Fichaje</title>
 <style>
-  :root { --gap:14px; --statusH:52px; }
+  :root { --gap:14px; }
   *{ box-sizing:border-box; }
   html,body{ height:100%; margin:0; }
   body{
     background:#f4f6f8; color:#111; font-family:system-ui, Arial, sans-serif;
-    min-height:100dvh; padding:var(--gap);
-    padding-bottom: calc(var(--gap) + var(--statusH));
-    display:grid; place-items:center;
+    min-height:100dvh; padding:var(--gap); display:grid; place-items:center;
   }
   .wrap{ width:100%; max-width:920px; background:#fff; border-radius:16px; box-shadow:0 8px 26px rgba(0,0,0,.08); padding:16px 16px 18px; }
   h1{ margin:0 0 10px 0; font-size:22px; font-weight:800; text-align:center; }
   .cam{ border-radius:14px; background:#000; overflow:hidden; margin-bottom:12px; height:360px; }
-  video{ width:100%; height:100%; object-fit:cover; display:block; background:#000; }
+  /* Selfie (espejo) en la vista previa */
+  video{ width:100%; height:100%; object-fit:cover; display:block; background:#000; transform:scaleX(-1); }
   .grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   button{ cursor:pointer; border:none; font-size:18px; padding:18px; border-radius:12px; font-weight:700; color:#fff; }
   .in{ background:#28a745; } .out{ background:#dc3545; }
-  .status{ position:fixed; left:0; right:0; bottom:0; height:var(--statusH); background:#10151a; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; padding:0 12px; text-align:center; }
-  .ok{ background:#0a7d24 !important; } .err{ background:#8a0f0f !important; }
+
+  /* Pastilla blanca (toast) */
+  .toast{
+    position:fixed; left:50%; bottom:14px; transform:translateX(-50%) translateY(8px);
+    min-width:260px; max-width:90vw; padding:10px 14px; border-radius:12px;
+    background:#fff; color:#111; box-shadow:0 6px 20px rgba(0,0,0,.18);
+    font-size:14px; font-weight:600; text-align:center; opacity:0; pointer-events:none;
+    transition:opacity .18s ease, transform .18s ease;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  .toast.ok::before{ content:"✓ "; color:#198754; font-weight:900; }
+  .toast.err::before{ content:"× "; color:#b02a37; font-weight:900; }
 </style>
 </head>
 <body>
@@ -31,54 +41,57 @@
     <div class="cam"><video id="cam" playsinline autoplay muted></video></div>
     <div class="grid" id="buttons"></div>
   </div>
-  <div id="status" class="status">Preparado</div>
+
+  <div id="toast" class="toast">Listo</div>
 
 <script>
 const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxlR17AJQw87pZgALcfRTE__1ud65aXrRj7B0OG7tu3Lj5s1bCsFRw09WS81qDa2Q-k/exec';
 const trabajadores = ["Ana Lopez Martin","Carla Gomez Torres","Luis Fernandez Diaz","Diego Perez Ruiz"];
 
-const $ = s=>document.querySelector(s), statusEl = $('#status');
+const $ = s=>document.querySelector(s);
 
-// Cámara
+// Cámara (frontal)
 (async()=>{ try{
   const stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user' }, audio:false });
   $('#cam').srcObject = stream;
-} catch(e){ setStatus('Sin permiso de cámara', true); }})();
+} catch(e){ toast('Sin permiso de cámara','err'); }})();
 
 // Botones
 const cont = document.getElementById('buttons');
 trabajadores.forEach(n=>{
-  cont.appendChild(mkBtn(`${n} — Entrada`,'in', ()=>fichar(n,'entrada')));
-  cont.appendChild(mkBtn(`${n} — Salida` ,'out',()=>fichar(n,'salida')));
+  cont.appendChild(btn(`${n} — Entrada`,'in', ()=>fichar(n,'entrada')));
+  cont.appendChild(btn(`${n} — Salida` ,'out',()=>fichar(n,'salida')));
 });
-function mkBtn(txt, cls, on){ const b=document.createElement('button'); b.className=cls; b.textContent=txt; b.onclick=on; return b; }
+function btn(txt, cls, on){ const b=document.createElement('button'); b.className=cls; b.textContent=txt; b.onclick=on; return b; }
 
 // Fichar
 async function fichar(nombre,tipo){
-  setStatus('Enviando…');
+  // Mensaje inmediato: "Nombre — enviando..."
+  toast(`${nombre} — enviando…`);
 
-  const photoB64 = await snapshotBase64($('#cam'));
-  const afterIso = new Date().toISOString(); // se ignora en servidor, pero lo dejamos por si lo necesitas después
+  // Foto (selfie real: también se invierte en captura)
+  const photoB64 = await snapshotBase64($('#cam'), true);
 
-  // PETICIÓN SIMPLE (no-cors, SIN headers → body se envía como text/plain)
+  // Envío (no-cors; servidor ya acepta text/plain)
   try{
     await fetch(WEBAPP_URL, { method:'POST', mode:'no-cors', body: JSON.stringify({ nombre, tipo, photo: photoB64 }) });
-  }catch(_){}
+  }catch(_){ /* seguimos al check */ }
 
-  // Confirmación en hoja (JSONP)
+  // Confirmación en hoja (JSONP; servidor comprueba última entrada en 5 min)
   try{
     await jsonpCheck({ nombre, tipo }, 8000);
     const hhmm = new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    setStatus(`OK ${nombre} — ${hhmm}`, false, true);
+    toast(`OK ${nombre} — ${hhmm} — enviado`,'ok', true); // beep
   }catch(_){
-    setStatus('No confirmado (reintenta o revisa conexión)', true);
+    toast('No confirmado (reintenta o conexión)','err');
   }
 }
 
 // Helpers
-async function snapshotBase64(video){
+async function snapshotBase64(video, mirror=false){
   const vw=video.videoWidth||640, vh=video.videoHeight||480, W=720, H=Math.round(720*vh/vw);
   const c=Object.assign(document.createElement('canvas'),{width:W,height:H}), ctx=c.getContext('2d');
+  if (mirror){ ctx.translate(W,0); ctx.scale(-1,1); }     // espejo en la foto
   ctx.drawImage(video,0,0,W,H);
   const dataUrl=c.toDataURL('image/jpeg',0.8);
   return dataUrl.replace(/^data:image\/\w+;base64,/, '');
@@ -97,10 +110,16 @@ function jsonpCheck({nombre, tipo}, timeoutMs=8000){
   });
 }
 
-function setStatus(txt, error=false, beep=false){
-  statusEl.textContent = txt;
-  statusEl.classList.remove('ok','err');
-  statusEl.classList.add(error?'err':'ok');
+// Toast + beep
+let toastTimer=null;
+function toast(msg, kind, beep=false){
+  const el = $('#toast');
+  el.textContent = msg;
+  el.classList.remove('ok','err');
+  if (kind) el.classList.add(kind);
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> el.classList.remove('show'), 2500);
   if (beep) playBeep();
 }
 function playBeep(){
