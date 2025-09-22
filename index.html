@@ -1,190 +1,166 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Fichaje (foto)</title>
+<title>Fichaje</title>
 <style>
-  :root { --gap:12px; --radius:14px; --statusH:48px; }
+  :root { --gap:14px; --radius:14px; --statusH:56px; }
   *{ box-sizing:border-box; }
   html,body{ height:100%; margin:0; }
   body{
     background:#f4f6f8; color:#111; font-family:system-ui, Arial, sans-serif;
     min-height:100dvh; padding:var(--gap);
     padding-bottom: calc(var(--gap) + var(--statusH));
+    display:grid; place-items:center;
   }
-  header{ text-align:center; font-weight:800; font-size:20px; margin-bottom:var(--gap); }
-  main{ max-width:900px; margin:0 auto; display:grid; gap:var(--gap); }
-
-  .cam{ display:grid; gap:10px; }
-  .cam-inner{
-    position:relative; width:100%;
-    height: clamp(200px, 35vh, 360px);
-    background:#000; border-radius:var(--radius); overflow:hidden;
+  .card{
+    width:100%; max-width:560px; background:#fff; border-radius:var(--radius);
+    box-shadow:0 6px 20px rgba(0,0,0,.08); padding:16px;
   }
-  .placeholder{
-    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    color:#bbb; font-size:13px; text-align:center; padding:10px;
-  }
-  video{
-    position:absolute; inset:0; width:100%; height:100%;
-    object-fit:cover; transform:scaleX(-1);
-  }
-  .ghost{
-    background:#111; color:#fff; border:0; border-radius:var(--radius);
-    padding:12px; font-size:16px; font-weight:700; cursor:pointer;
-  }
-
-  .grid{ display:grid; gap:var(--gap); grid-template-columns:1fr 1fr; }
-  @media (max-width:900px){ .grid{ grid-template-columns:1fr; } }
-  button.in,button.out{
-    width:100%; border:0; border-radius:var(--radius);
-    font-size:18px; font-weight:800; cursor:pointer; padding:0 16px;
-    height:64px;
-  }
-  .in{ background:#16a34a; color:#fff; }
-  .out{ background:#dc2626; color:#fff; }
-  button:active{ transform:scale(.985); }
-
+  h1{ margin:0 0 8px 0; font-size:18px; }
+  .row{ display:flex; gap:10px; margin:10px 0; }
+  input,select,button{ font-size:16px; padding:12px; border-radius:12px; border:1px solid #ddd; }
+  input,select{ flex:1; }
+  button{ cursor:pointer; border:none; background:#0d6efd; color:#fff; min-width:140px; }
+  button.sal{ background:#dc3545; }
+  video,canvas{ width:100%; border-radius:12px; background:#000; }
   .status{
     position:fixed; left:0; right:0; bottom:0; height:var(--statusH);
-    display:flex; align-items:center; justify-content:center;
-    background:#fff; border-top:1px solid #ddd;
-    font-family:ui-monospace, Menlo, Consolas, monospace; font-size:14px;
-    padding:0 10px; text-align:center;
+    background:#10151a; color:#fff; display:flex; align-items:center; justify-content:center;
+    font-weight:600; padding:0 12px;
   }
+  .ok{ background:#0a7d24 !important; }
+  .err{ background:#8a0f0f !important; }
 </style>
 </head>
 <body>
-  <header>Fichaje</header>
+  <div class="card">
+    <h1>Fichaje con foto</h1>
 
-  <main>
-    <section class="cam">
-      <div class="cam-inner">
-        <video id="preview" playsinline autoplay muted></video>
-        <div id="ph" class="placeholder">Cámara apagada o sin permiso.<br/>Pulsa “Activar cámara”.</div>
-      </div>
-      <button class="ghost" id="btnCam" type="button">Activar cámara</button>
-    </section>
+    <div class="row">
+      <input id="nombre" placeholder="Nombre y apellidos" autocomplete="off" />
+    </div>
 
-    <section class="grid">
-      <button class="in"  onclick="fichar(N.ANA,   'entrada')">Ana López Martín — Entrada</button>
-      <button class="out" onclick="fichar(N.ANA,   'salida')">Ana López Martín — Salida</button>
+    <div class="row">
+      <label><input type="checkbox" id="sinPausa" /> Sin pausa</label>
+    </div>
 
-      <button class="in"  onclick="fichar(N.DIEGO, 'entrada')">Diego Pérez Ruiz — Entrada</button>
-      <button class="out" onclick="fichar(N.DIEGO, 'salida')">Diego Pérez Ruiz — Salida</button>
+    <video id="cam" playsinline autoplay muted></video>
 
-      <button class="in"  onclick="fichar(N.CARLA, 'entrada')">Carla Gómez Torres — Entrada</button>
-      <button class="out" onclick="fichar(N.CARLA, 'salida')">Carla Gómez Torres — Salida</button>
+    <div class="row" style="justify-content:space-between">
+      <button id="btnEntrada">Fichar ENTRADA</button>
+      <button id="btnSalida"  class="sal">Fichar SALIDA</button>
+    </div>
+  </div>
 
-      <button class="in"  onclick="fichar(N.LUIS,  'entrada')">Luis Fernández Díaz — Entrada</button>
-      <button class="out" onclick="fichar(N.LUIS,  'salida')">Luis Fernández Díaz — Salida</button>
-    </section>
-  </main>
-
-  <div class="status" id="status">Listo.</div>
+  <div id="status" class="status">Preparado</div>
 
 <script>
-const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxlR17AJQw87pZgALcfRTE__1ud65aXrRj7B0OG7tu3Lj5s1bCsFRw09WS81qDa2Q-k/exec';
-const N = {
-  ANA:   'Ana López Martín',
-  DIEGO: 'Diego Pérez Ruiz',
-  CARLA: 'Carla Gómez Torres',
-  LUIS:  'Luis Fernández Díaz',
-};
+const WEBAPP_URL = 'https://script.google.com/macros/s/ID_WEBAPP/exec'; // ← pon tu URL
 
-/* Cámara */
-let stream = null;
-const videoEl  = document.getElementById('preview');
-const phEl     = document.getElementById('ph');
-const statusEl = document.getElementById('status');
-const btnCam   = document.getElementById('btnCam');
+const $ = (s)=>document.querySelector(s);
+const statusEl = $('#status');
 
-async function startCam(){
+let stream;
+(async ()=>{
   try{
-    if (stream) stream.getTracks().forEach(t=>t.stop());
-    stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'user' } }, audio:false });
-    videoEl.srcObject = stream;
-    await videoEl.play();
-    phEl.style.display = 'none';
-    btnCam.textContent = 'Cámara activa';
-    btnCam.disabled = true;
-    setStatus('Cámara activa.');
+    stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user' }, audio:false });
+    $('#cam').srcObject = stream;
   }catch(e){
-    phEl.style.display = 'flex';
-    setStatus('Permite la cámara. Error: ' + e.message);
+    setStatus('No hay permiso de cámara', true);
+  }
+})();
+
+$('#btnEntrada').onclick = ()=>fichar('entrada');
+$('#btnSalida').onclick  = ()=>fichar('salida');
+
+async function fichar(tipo){
+  const nombre = String($('#nombre').value||'').trim();
+  if (!nombre){ setStatus('Escribe el nombre', true); return; }
+
+  setStatus('Enviando…');
+
+  // 1) captura foto a JPEG base64
+  const photoB64 = await snapshotBase64($('#cam'));
+
+  // 2) marca temporal para JSONP
+  const afterIso = new Date().toISOString();
+
+  // 3) POST al GAS (no dependemos de la respuesta → no-cors)
+  try{
+    await fetch(https://script.google.com/macros/s/AKfycbxlR17AJQw87pZgALcfRTE__1ud65aXrRj7B0OG7tu3Lj5s1bCsFRw09WS81qDa2Q-k/exec, {
+      method:'POST',
+      mode:'no-cors',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        nombre, tipo, sinPausa: $('#sinPausa').checked, photo: photoB64
+      })
+    });
+  }catch(e){
+    // seguimos; confirmaremos por JSONP
+  }
+
+  // 4) Confirmación JSONP de que la FILA ya está en Sheets
+  try{
+    await jsonpCheck({ nombre, tipo, afterIso }, 6000); // timeout 6s
+    const hhmm = new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    setStatus(`OK ${nombre} — ${hhmm}`, false, true); // beep
+  }catch(e){
+    setStatus('No confirmado (sin cobertura). Reintenta.', true);
   }
 }
-btnCam.addEventListener('click', startCam);
-if (location.protocol === 'https:') startCam();
 
-/* Audio beep */
-let audioCtx=null;
-function ensureAudio(){ if(!audioCtx){ const Ctx=window.AudioContext||window.webkitAudioContext; try{audioCtx=new Ctx();}catch(_){}} }
-window.addEventListener('pointerdown', ensureAudio, {once:true});
-function beep(ms=120,freq=880,vol=0.2){ try{ ensureAudio(); if(!audioCtx) return;
-  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
-  o.type='sine'; o.frequency.value=freq; g.gain.value=vol;
-  o.connect(g); g.connect(audioCtx.destination); o.start(); setTimeout(()=>o.stop(), ms);
-}catch(_){} }
-
-/* Snapshot reducido */
-function snapshotDataURL(){
-  const srcW = videoEl.videoWidth||640, srcH=videoEl.videoHeight||480;
-  const maxW=640, scale=Math.min(1,maxW/srcW);
-  const w=Math.round(srcW*scale), h=Math.round(srcH*scale);
-  const c=document.createElement('canvas'); c.width=w; c.height=h;
-  const ctx=c.getContext('2d'); ctx.translate(w,0); ctx.scale(-1,1);
-  ctx.drawImage(videoEl,0,0,w,h);
-  return c.toDataURL('image/jpeg',0.6);
+function setStatus(txt, error=false, beep=false){
+  statusEl.textContent = txt;
+  statusEl.classList.remove('ok','err');
+  statusEl.classList.add(error?'err':'ok');
+  if (beep) playBeep();
 }
 
-/* JSONP poller */
-function pollReceipt({nombre,tipo,afterIso,timeoutMs=20000,intervalMs=900}){
+async function snapshotBase64(video){
+  const vw = video.videoWidth || 640, vh = video.videoHeight || 480;
+  const W = 720, H = Math.round(720*vh/vw);
+  const c = Object.assign(document.createElement('canvas'), { width: W, height: H });
+  const ctx = c.getContext('2d');
+  ctx.drawImage(video, 0, 0, W, H);
+  const dataUrl = c.toDataURL('image/jpeg', 0.8);
+  return dataUrl.replace(/^data:image\/\w+;base64,/, '');
+}
+
+function jsonpCheck({nombre, tipo, afterIso}, timeoutMs=6000){
   return new Promise((resolve,reject)=>{
-    const t0=Date.now();
-    (function tick(){
-      const cbName='ack_'+Math.random().toString(36).slice(2);
-      window[cbName]=(res)=>{
-        try{document.body.removeChild(script);}catch(_){}
-        delete window[cbName];
-        if(res&&res.ok){ resolve(res); }
-        else if(Date.now()-t0>=timeoutMs){ reject(new Error('Sin confirmación')); }
-        else { setTimeout(tick,intervalMs); }
-      };
-      const url=WEBAPP_URL+`?check=1&nombre=${encodeURIComponent(nombre)}&tipo=${encodeURIComponent(tipo)}&after=${encodeURIComponent(afterIso)}&callback=${cbName}&_=${Date.now()}`;
-      const script=document.createElement('script'); script.src=url;
-      script.onerror=()=>{ try{document.body.removeChild(script);}catch(_){}
-        delete window[cbName];
-        if(Date.now()-t0>=timeoutMs) reject(new Error('Error JSONP'));
-        else setTimeout(tick,intervalMs);
-      };
-      document.body.appendChild(script);
-    })();
+    const cb = 'cb'+Math.random().toString(36).slice(2);
+    const s  = document.createElement('script');
+    const url = `${WEBAPP_URL}?check=1&nombre=${encodeURIComponent(nombre)}&tipo=${encodeURIComponent(tipo)}&after=${encodeURIComponent(afterIso)}&callback=${cb}`;
+    const to = setTimeout(()=>{
+      cleanup(); reject(new Error('timeout'));
+    }, timeoutMs);
+
+    window[cb] = (r)=>{ cleanup(); (r && r.ok) ? resolve() : reject(new Error('not ok')); };
+    s.src = url; s.onerror = ()=>{ cleanup(); reject(new Error('jsonp error')); };
+    document.body.appendChild(s);
+
+    function cleanup(){
+      clearTimeout(to);
+      if (window[cb]) delete window[cb];
+      if (s && s.parentNode) s.parentNode.removeChild(s);
+    }
   });
 }
 
-/* Envío + confirmación */
-let sending=false;
-async function fichar(nombre,tipo){
-  if(sending) return; sending=true;
-  try{
-    if(!stream){ await startCam(); if(!stream){ sending=false; return; } }
-    const afterIso=new Date().toISOString();
-    const dataUrl=snapshotDataURL();
-    const fd=new FormData(); fd.append('nombre',nombre); fd.append('tipo',tipo); fd.append('photo',dataUrl);
-    setStatus(`Enviando: ${nombre} — ${tipo}...`);
-    fetch(WEBAPP_URL,{method:'POST',mode:'no-cors',body:fd}); // no esperamos
-    const res=await pollReceipt({nombre,tipo,afterIso});
-    if(navigator.vibrate) navigator.vibrate(50);
-    beep();
-    setStatus(`✔ OK ${nombre} — ${tipo} (fila ${res.row})`);
-  }catch(e){
-    setStatus('No confirmado: '+e.message);
-  }finally{ sending=false; }
+// Beep sin archivos (WebAudio)
+function playBeep(){
+  const ctx = new (window.AudioContext||window.webkitAudioContext)();
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = 'sine'; o.frequency.value = 880; // A5
+  o.connect(g); g.connect(ctx.destination);
+  g.gain.setValueAtTime(0.001, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime+0.01);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.25);
+  o.start(); o.stop(ctx.currentTime+0.26);
 }
-
-function setStatus(m){ statusEl.textContent=m; }
 </script>
 </body>
 </html>
