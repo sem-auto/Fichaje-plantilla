@@ -46,24 +46,15 @@
     </div>
   </div>
 
-  <!-- Beep -->
   <audio id="beep" preload="auto"
     src="data:audio/wav;base64,UklGRhQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABYAAAAAAABmZmZmZmZmZmZmZmYA"></audio>
 
 <script>
-/*** CONFIG ***/
 const WEBAPP_URL='https://script.google.com/macros/s/AKfycbxlR17AJQw87pZgALcfRTE__1ud65aXrRj7B0OG7tu3Lj5s1bCsFRw09WS81qDa2Q-k/exec';
 
-/*** Normaliza igual que el backend (tildes/espacios) ***/
-function normalizeName(s){
-  if(!s) return '';
-  let n=String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-           .replace(/\s+/g,' ').trim().toLowerCase();
-  return n.replace(/\b\w/g,c=>c.toUpperCase());
-}
 function hhmmss(){ return new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
 
-/*** Cámara (user → fallback environment) ***/
+// Cámara (selfie -> fallback trasera)
 (async function initCam(){
   const v=document.getElementById('cam');
   const a={video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}},audio:false};
@@ -84,11 +75,11 @@ function snapshotBase64(){
   return c.toDataURL('image/jpeg',0.85);
 }
 
-/*** UI ***/
+// UI
 const sBox=document.getElementById('status'), sMain=document.getElementById('sMain'), sSub=document.getElementById('sSub');
 function setStatus(msg,kind='info',sub=''){ sMain.textContent=msg; sSub.textContent=sub||''; sBox.classList.remove('ok','err'); if(kind==='ok') sBox.classList.add('ok'); if(kind==='err') sBox.classList.add('err'); }
 
-/*** CHECK smart (memoria → últimas filas). Reintenta cada 200ms, timeout 6s ***/
+// JSONP check smart (memoria -> últimas filas). 200ms entre intentos.
 function jsonpCheckSmart(nombre, timeoutMs=6000){
   const deadline=Date.now()+timeoutMs;
   return new Promise((resolve,reject)=>{
@@ -107,9 +98,8 @@ function jsonpCheckSmart(nombre, timeoutMs=6000){
   });
 }
 
-/*** Fichaje ***/
-async function fichar(nombreOriginal,tipo){
-  const nombre = normalizeName(nombreOriginal);
+// Fichaje
+async function fichar(nombre, tipo){
   setStatus(`${nombre} — enviando…`,'info',hhmmss());
 
   const photoB64 = snapshotBase64();
