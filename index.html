@@ -37,8 +37,15 @@
   <div class="grid">
     <button class="in"  onclick="fichar(N.ANA,   'entrada')">Ana López Martín — Entrada</button>
     <button class="out" onclick="fichar(N.ANA,   'salida')">Ana López Martín — Salida</button>
+
     <button class="in"  onclick="fichar(N.DIEGO, 'entrada')">Diego Pérez Ruiz — Entrada</button>
     <button class="out" onclick="fichar(N.DIEGO, 'salida')">Diego Pérez Ruiz — Salida</button>
+
+    <button class="in"  onclick="fichar(N.CARLA, 'entrada')">Carla Gómez Torres — Entrada</button>
+    <button class="out" onclick="fichar(N.CARLA, 'salida')">Carla Gómez Torres — Salida</button>
+
+    <button class="in"  onclick="fichar(N.LUIS,  'entrada')">Luis Fernández Díaz — Entrada</button>
+    <button class="out" onclick="fichar(N.LUIS,  'salida')">Luis Fernández Díaz — Salida</button>
   </div>
 
   <div class="card status" id="status">Listo.</div>
@@ -50,6 +57,8 @@ const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxlR17AJQw87pZgALcfR
 const N = {
   ANA:   'Ana López Martín',
   DIEGO: 'Diego Pérez Ruiz',
+  CARLA: 'Carla Gómez Torres',
+  LUIS:  'Luis Fernández Díaz',
 };
 
 /* === CÁMARA === */
@@ -74,9 +83,9 @@ function snapshotB64() {
   const w = videoEl.videoWidth || 640, h = videoEl.videoHeight || 480;
   const c = document.createElement('canvas'); c.width=w; c.height=h;
   const ctx = c.getContext('2d');
-  ctx.translate(w,0); ctx.scale(-1,1);      // espejo para coincidir con preview
+  ctx.translate(w,0); ctx.scale(-1,1);
   ctx.drawImage(videoEl, 0, 0, w, h);
-  return c.toDataURL('image/jpeg', 0.7).split(',')[1]; // JPG ligero (solo base64)
+  return c.toDataURL('image/jpeg', 0.7).split(',')[1];
 }
 
 /* === ENVÍO === */
@@ -88,7 +97,7 @@ async function fichar(nombre, tipo) {
     fd.append('tipo',   tipo);
     fd.append('photo',  snapshotB64());
     setStatus(`Enviando: ${nombre} — ${tipo}...`);
-    await fetch(WEBAPP_URL, { method:'POST', mode:'no-cors', body: fd }); // evita CORS
+    await fetch(WEBAPP_URL, { method:'POST', mode:'no-cors', body: fd });
     if (navigator.vibrate) navigator.vibrate(60);
     setStatus('OK ' + nombre + ' — ' + tipo + ' (enviado)');
   } catch (e) {
