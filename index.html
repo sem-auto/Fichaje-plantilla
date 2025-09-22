@@ -46,20 +46,24 @@
     </div>
   </div>
 
+  <!-- Beep -->
   <audio id="beep" preload="auto"
     src="data:audio/wav;base64,UklGRhQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABYAAAAAAABmZmZmZmZmZmZmZmYA"></audio>
 
 <script>
+/*** CONFIG ***/
 const WEBAPP_URL='https://script.google.com/macros/s/AKfycbxlR17AJQw87pZgALcfRTE__1ud65aXrRj7B0OG7tu3Lj5s1bCsFRw09WS81qDa2Q-k/exec';
 
-// normalización idéntica al backend
+/*** Normaliza igual que el backend (tildes/espacios) ***/
 function normalizeName(s){
   if(!s) return '';
-  let n=String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toLowerCase();
+  let n=String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+           .replace(/\s+/g,' ').trim().toLowerCase();
   return n.replace(/\b\w/g,c=>c.toUpperCase());
 }
 function hhmmss(){ return new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
 
+/*** Cámara (user → fallback environment) ***/
 (async function initCam(){
   const v=document.getElementById('cam');
   const a={video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}},audio:false};
@@ -67,7 +71,6 @@ function hhmmss(){ return new Date().toLocaleTimeString('es-ES',{hour:'2-digit',
   try{ v.srcObject=await navigator.mediaDevices.getUserMedia(a); }
   catch(_){ v.srcObject=await navigator.mediaDevices.getUserMedia(b); v.style.transform=''; }
 })();
-
 function snapshotBase64(){
   const v=document.getElementById('cam'), c=document.getElementById('snap');
   const w=v.videoWidth||1280, h=v.videoHeight||720, maxW=900, sc=Math.min(1,maxW/w);
@@ -81,47 +84,49 @@ function snapshotBase64(){
   return c.toDataURL('image/jpeg',0.85);
 }
 
+/*** UI ***/
 const sBox=document.getElementById('status'), sMain=document.getElementById('sMain'), sSub=document.getElementById('sSub');
 function setStatus(msg,kind='info',sub=''){ sMain.textContent=msg; sSub.textContent=sub||''; sBox.classList.remove('ok','err'); if(kind==='ok') sBox.classList.add('ok'); if(kind==='err') sBox.classList.add('err'); }
 
-// JSONP check smart (memoria -> últimas filas). Reintento cada 250 ms.
-function jsonpCheckSmart(nombre, afterIso, timeoutMs=7000){
+/*** CHECK smart (memoria → últimas filas). Reintenta cada 200ms, timeout 6s ***/
+function jsonpCheckSmart(nombre, timeoutMs=6000){
   const deadline=Date.now()+timeoutMs;
   return new Promise((resolve,reject)=>{
     const poll=()=>{
       const cb='cb'+Math.random().toString(36).slice(2);
       const s=document.createElement('script');
-      const url=`${WEBAPP_URL}?check=1&nombre=${encodeURIComponent(nombre)}&after=${encodeURIComponent(afterIso)}&t=${Date.now()}&callback=${cb}`;
-      const to=setTimeout(()=>{ cleanup(); next(); }, 800);
+      const url=`${WEBAPP_URL}?check=1&nombre=${encodeURIComponent(nombre)}&t=${Date.now()}&callback=${cb}`;
+      const to=setTimeout(()=>{ cleanup(); next(); }, 700);
       window[cb]=(r)=>{ cleanup(); (r&&r.ok)?resolve(r):next(); };
       s.src=url; s.onerror=()=>{ cleanup(); next(); };
       document.body.appendChild(s);
       function cleanup(){ clearTimeout(to); delete window[cb]; s.remove(); }
-      function next(){ (Date.now()>=deadline)?reject(new Error('timeout')):setTimeout(poll,250); }
+      function next(){ (Date.now()>=deadline)?reject(new Error('timeout')):setTimeout(poll,200); }
     };
     poll();
   });
 }
 
+/*** Fichaje ***/
 async function fichar(nombreOriginal,tipo){
   const nombre = normalizeName(nombreOriginal);
-  const afterIso = new Date().toISOString();          // marca de tiempo para el fallback
   setStatus(`${nombre} — enviando…`,'info',hhmmss());
 
   const photoB64 = snapshotBase64();
 
+  // POST rápido sin preflight
   try{
     await fetch(WEBAPP_URL,{
-      method:'POST',mode:'no-cors',
+      method:'POST', mode:'no-cors',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
       body: JSON.stringify({ nombre, tipo, photo: photoB64 })
     });
   }catch(_){}
 
-  await new Promise(r=>setTimeout(r,300));
+  await new Promise(r=>setTimeout(r,250));
 
   try{
-    const r = await jsonpCheckSmart(nombre, afterIso, 7000);
+    const r = await jsonpCheckSmart(nombre, 6000);
     setStatus(`OK ${nombre} — ${hhmmss()} — enviado`,'ok');
     const beep=document.getElementById('beep'); beep.currentTime=0; beep.play().catch(()=>{});
   }catch(_){
