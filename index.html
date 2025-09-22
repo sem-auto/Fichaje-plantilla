@@ -1,128 +1,120 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Fichaje</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Fichaje con foto</title>
 <style>
-  :root{--bg:#edf0f3;--card:#fff;--ink:#111;--ok:#1fa354;--ok2:#168041;--err:#d33c3c;--err2:#a32e2e}
-  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
-  .wrap{max-width:980px;margin:14px auto;padding:12px;background:var(--card);border-radius:14px;box-shadow:0 2px 18px rgba(0,0,0,.08)}
-  h1{margin:4px 0 10px;text-align:center;font-size:24px}
-  .cam{width:100%;height:380px;background:#000;border-radius:10px;overflow:hidden}
-  video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)} /* selfie */
-  canvas{display:none}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
-  .btn{display:block;width:100%;padding:14px 12px;border-radius:12px;border:none;font-weight:800;font-size:20px;color:#fff;cursor:pointer}
-  .in{background:var(--ok)} .in:hover{background:var(--ok2)}
-  .out{background:var(--err)} .out:hover{background:var(--err2)}
-  .statusBox{margin-top:12px;background:#fff;border:1px solid #e6e6e6;border-radius:10px;padding:10px 12px;font-weight:800;display:flex;gap:8px;align-items:center}
-  .statusBox.ok{border-color:#cfeeda;background:#f4fbf6;color:#125b31}
-  .statusBox.err{border-color:#ffd1cf;background:#fff7f6;color:#8a2323}
-  .muted{font-weight:600;color:#666;font-size:12px}
+  :root { --gap:14px; --r:16px; --w:560px; --btnH:48px; }
+  *{box-sizing:border-box} body{margin:0;font-family:system-ui,Arial,sans-serif;background:#f4f6f8;color:#111;min-height:100dvh;display:grid;place-items:center}
+  .card{width:100%;max-width:var(--w);background:#fff;border-radius:var(--r);box-shadow:0 6px 24px rgba(0,0,0,.08);padding:16px}
+  .row{display:flex;gap:var(--gap);align-items:center;margin-bottom:var(--gap)}
+  .row>label{min-width:96px;font-weight:600}
+  input,select{width:100%;padding:10px 12px;border:1px solid #d7dde4;border-radius:10px;font-size:16px}
+  video,canvas{width:100%;border-radius:12px;background:#000}
+  button{height:var(--btnH);border:0;border-radius:12px;font-weight:700;cursor:pointer}
+  .primary{background:#2563eb;color:#fff;width:100%}
+  .status{height:40px;display:flex;align-items:center;justify-content:center;font-weight:600}
+  .ok{color:#0a7f2e}.err{color:#b00020}
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Fichaje</h1>
-    <div class="cam"><video id="cam" autoplay muted playsinline></video><canvas id="snap"></canvas></div>
-
-    <div class="grid">
-      <button class="btn in"  onclick="fichar('Ana López Martín','entrada')">Ana López Martín — Entrada</button>
-      <button class="btn out" onclick="fichar('Ana López Martín','salida')">Ana López Martín — Salida</button>
-
-      <button class="btn in"  onclick="fichar('Carla Gómez Torres','entrada')">Carla Gómez Torres — Entrada</button>
-      <button class="btn out" onclick="fichar('Carla Gómez Torres','salida')">Carla Gómez Torres — Salida</button>
-
-      <button class="btn in"  onclick="fichar('Luis Fernández Díaz','entrada')">Luis Fernández Díaz — Entrada</button>
-      <button class="btn out" onclick="fichar('Luis Fernández Díaz','salida')">Luis Fernández Díaz — Salida</button>
-
-      <button class="btn in"  onclick="fichar('Diego Pérez Ruiz','entrada')">Diego Pérez Ruiz — Entrada</button>
-      <button class="btn out" onclick="fichar('Diego Pérez Ruiz','salida')">Diego Pérez Ruiz — Salida</button>
+  <div class="card">
+    <h2>Fichaje con foto</h2>
+    <div class="row"><label>Nombre</label><input id="nombre" placeholder="Nombre y apellidos" autocomplete="name"/></div>
+    <div class="row"><label>Tipo</label>
+      <select id="tipo"><option value="entrada">entrada</option><option value="salida">salida</option></select>
     </div>
-
-    <div id="status" class="statusBox">
-      <div id="sMain">Listo</div>
-      <div class="muted" id="sSub"></div>
-    </div>
+    <div class="row"><label>Sin pausa</label><input type="checkbox" id="sinPausa"/></div>
+    <video id="video" playsinline autoplay muted></video>
+    <canvas id="canvas" hidden></canvas>
+    <div style="height:12px"></div>
+    <button class="primary" id="btn">Fichar con foto</button>
+    <div class="status" id="status"></div>
   </div>
 
-  <audio id="beep" preload="auto"
-    src="data:audio/wav;base64,UklGRhQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABYAAAAAAABmZmZmZmZmZmZmZmYA"></audio>
-
 <script>
-const WEBAPP_URL='https://script.google.com/macros/s/AKfycbxlR17AJQw87pZgALcfRTE__1ud65aXrRj7B0OG7tu3Lj5s1bCsFRw09WS81qDa2Q-k/exec';
+/** CONFIG **/
+const ENDPOINT = 'PON_AQUI_TU_URL_WEBAPP/exec'; // Google Apps Script desplegado como "Cualquiera, incluso anónimo"
+const TARGET_WIDTH = 640;
+const JPEG_QUALITY = 0.6;
 
-function hhmmss(){ return new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+const el=(id)=>document.getElementById(id);
+const video=el('video'), canvas=el('canvas'), btn=el('btn'), statusEl=el('status');
 
-// Cámara (selfie -> fallback trasera)
-(async function initCam(){
-  const v=document.getElementById('cam');
-  const a={video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}},audio:false};
-  const b={video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}},audio:false};
-  try{ v.srcObject=await navigator.mediaDevices.getUserMedia(a); }
-  catch(_){ v.srcObject=await navigator.mediaDevices.getUserMedia(b); v.style.transform=''; }
-})();
-function snapshotBase64(){
-  const v=document.getElementById('cam'), c=document.getElementById('snap');
-  const w=v.videoWidth||1280, h=v.videoHeight||720, maxW=900, sc=Math.min(1,maxW/w);
-  c.width=Math.round(w*sc); c.height=Math.round(h*sc);
-  const ctx=c.getContext('2d');
-  ctx.save();
-  const mirrored=getComputedStyle(v).transform.includes('matrix(-1');
-  if(mirrored){ ctx.translate(c.width,0); ctx.scale(-1,1); }
-  ctx.drawImage(v,0,0,c.width,c.height);
-  ctx.restore();
-  return c.toDataURL('image/jpeg',0.85);
-}
-
-// UI
-const sBox=document.getElementById('status'), sMain=document.getElementById('sMain'), sSub=document.getElementById('sSub');
-function setStatus(msg,kind='info',sub=''){ sMain.textContent=msg; sSub.textContent=sub||''; sBox.classList.remove('ok','err'); if(kind==='ok') sBox.classList.add('ok'); if(kind==='err') sBox.classList.add('err'); }
-
-// JSONP check smart (memoria -> últimas filas). 200ms entre intentos.
-function jsonpCheckSmart(nombre, timeoutMs=6000){
-  const deadline=Date.now()+timeoutMs;
-  return new Promise((resolve,reject)=>{
-    const poll=()=>{
-      const cb='cb'+Math.random().toString(36).slice(2);
-      const s=document.createElement('script');
-      const url=`${WEBAPP_URL}?check=1&nombre=${encodeURIComponent(nombre)}&t=${Date.now()}&callback=${cb}`;
-      const to=setTimeout(()=>{ cleanup(); next(); }, 700);
-      window[cb]=(r)=>{ cleanup(); (r&&r.ok)?resolve(r):next(); };
-      s.src=url; s.onerror=()=>{ cleanup(); next(); };
-      document.body.appendChild(s);
-      function cleanup(){ clearTimeout(to); delete window[cb]; s.remove(); }
-      function next(){ (Date.now()>=deadline)?reject(new Error('timeout')):setTimeout(poll,200); }
-    };
-    poll();
-  });
-}
-
-// Fichaje
-async function fichar(nombre, tipo){
-  setStatus(`${nombre} — enviando…`,'info',hhmmss());
-
-  const photoB64 = snapshotBase64();
-
-  // POST rápido sin preflight
+async function initCamera(){
   try{
-    await fetch(WEBAPP_URL,{
-      method:'POST', mode:'no-cors',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({ nombre, tipo, photo: photoB64 })
+    const stream=await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:'user', width:{ideal:1280}, height:{ideal:720} }, audio:false
     });
-  }catch(_){}
-
-  await new Promise(r=>setTimeout(r,250));
-
-  try{
-    const r = await jsonpCheckSmart(nombre, 6000);
-    setStatus(`OK ${nombre} — ${hhmmss()} — enviado`,'ok');
-    const beep=document.getElementById('beep'); beep.currentTime=0; beep.play().catch(()=>{});
-  }catch(_){
-    setStatus(`${nombre} — no confirmado (revisa conexión)`,'err');
-  }
+    video.srcObject=stream;
+  }catch(e){ setStatus('Sin acceso a cámara', true); }
 }
+
+function captureToDataURL(){
+  const track=(video.srcObject && video.srcObject.getVideoTracks()[0])||null;
+  const s=track?track.getSettings():{width:video.videoWidth,height:video.videoHeight};
+  const vw=s.width||video.videoWidth||1280, vh=s.height||video.videoHeight||720;
+  const scale=TARGET_WIDTH/vw, tw=Math.round(vw*scale), th=Math.round(vh*scale);
+  canvas.width=tw; canvas.height=th;
+  const ctx=canvas.getContext('2d',{willReadFrequently:false});
+  ctx.drawImage(video,0,0,tw,th);
+  return canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+}
+
+function beepOk(){
+  const AC=window.AudioContext||window.webkitAudioContext;
+  const a=new AC(); const o=a.createOscillator(); const g=a.createGain();
+  o.connect(g); g.connect(a.destination);
+  o.type='sine'; o.frequency.value=880; g.gain.setValueAtTime(0.05,a.currentTime);
+  o.start(); setTimeout(()=>{o.stop(); a.close();}, 120);
+}
+
+function setStatus(msg,isErr=false){ statusEl.textContent=msg; statusEl.className='status '+(isErr?'err':'ok'); }
+
+function jsonp(url, onDone){
+  const cb='cb_'+Math.random().toString(36).slice(2);
+  window[cb]=(data)=>{ try{ onDone(data); } finally{ delete window[cb]; s.remove(); } };
+  const s=document.createElement('script');
+  s.src=url+(url.includes('?')?'&':'?')+'callback='+cb;
+  document.head.appendChild(s);
+}
+
+async function postJSON(url, payload, timeoutMs=15000){
+  const ctrl=new AbortController();
+  const to=setTimeout(()=>ctrl.abort(), timeoutMs);
+  try{
+    const res=await fetch(url,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload), signal:ctrl.signal });
+    const json=await res.json().catch(()=>({ok:false,error:'Respuesta inválida'}));
+    return json;
+  } finally { clearTimeout(to); }
+}
+
+btn.addEventListener('click', ()=>{
+  const nombre=(el('nombre').value||'').trim();
+  const tipo=el('tipo').value;
+  const sinPausa=el('sinPausa').checked;
+  if(!nombre){ setStatus('Falta nombre', true); return; }
+
+  setStatus('Enviando…');
+
+  // Fase 1: fichaje inmediato por GET (JSONP) → OK + beep
+  const url = `${ENDPOINT}?nombre=${encodeURIComponent(nombre)}&tipo=${encodeURIComponent(tipo)}&sinPausa=${sinPausa?'true':'false'}`;
+  jsonp(url, async (r)=>{
+    if(!r || !r.ok){ setStatus((r && (r.msg||r.error)) || 'Error', true); return; }
+    setStatus(`OK ${r.hora}`); // UI inmediata
+    try { beepOk(); } catch(_) {}
+
+    // Fase 2 (asíncrona): subir la foto con token
+    try{
+      const fotoDataURL = captureToDataURL();
+      const resp = await postJSON(ENDPOINT, { token: r.token, photo: fotoDataURL });
+      if(!resp.ok){ console.log('Foto cola error:', resp.error||resp.msg); }
+    }catch(err){ console.log('Foto cola err:', err && err.message); }
+  });
+});
+
+initCamera();
 </script>
 </body>
 </html>
