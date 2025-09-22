@@ -1,135 +1,229 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Fichaje</title>
+<title>Fichajes</title>
 <style>
-  :root { --gap:14px; }
-  *{ box-sizing:border-box; }
-  html,body{ height:100%; margin:0; }
-  body{
-    background:#f4f6f8; color:#111; font-family:system-ui, Arial, sans-serif;
-    min-height:100dvh; padding:var(--gap); display:grid; place-items:center;
-  }
-  .wrap{ width:100%; max-width:920px; background:#fff; border-radius:16px; box-shadow:0 8px 26px rgba(0,0,0,.08); padding:16px 16px 18px; }
-  h1{ margin:0 0 10px 0; font-size:22px; font-weight:800; text-align:center; }
-  .cam{ border-radius:14px; background:#000; overflow:hidden; margin-bottom:12px; height:360px; }
-  /* Selfie en previsualización */
-  video{ width:100%; height:100%; object-fit:cover; display:block; background:#000; transform:scaleX(-1); }
-  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  button{ cursor:pointer; border:none; font-size:18px; padding:18px; border-radius:12px; font-weight:700; color:#fff; }
-  .in{ background:#28a745; } .out{ background:#dc3545; }
-
-  /* Pastilla blanca (toast) */
-  .toast{
-    position:fixed; left:50%; bottom:14px; transform:translateX(-50%) translateY(8px);
-    min-width:260px; max-width:90vw; padding:10px 14px; border-radius:12px;
-    background:#fff; color:#111; box-shadow:0 6px 20px rgba(0,0,0,.18);
-    font-size:14px; font-weight:600; text-align:center; opacity:0; pointer-events:none;
-    transition:opacity .18s ease, transform .18s ease;
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  }
-  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
-  .toast.ok::before{ content:"✓ "; color:#198754; font-weight:900; }
-  .toast.err::before{ content:"× "; color:#b02a37; font-weight:900; }
+  :root { --ok:#18a957; --err:#d43c2f; --accent:#0d6efd; --bg:#f7f7f8; }
+  html,body{margin:0;padding:0;background:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;color:#111}
+  .app{max-width:980px;margin:0 auto;padding:12px 12px 92px}
+  header{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+  header h1{font-size:18px;margin:0}
+  #ver{font:12px/1 monospace;color:#666}
+  .row{display:flex;flex-wrap:wrap;gap:12px}
+  .col{flex:1 1 320px}
+  .panel{border:1px solid #e6e6e6;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.05);background:#fff}
+  .panel h2{margin:0;padding:10px 12px;font-size:14px;border-bottom:1px solid #eee;background:#fafafa;border-radius:12px 12px 0 0}
+  .panel .body{padding:12px}
+  /* Cámara */
+  .camWrap{position:relative;width:100%;max-width:420px;aspect-ratio:3/4;border-radius:12px;overflow:hidden;border:1px solid #ddd;background:#000}
+  video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);} /* selfie mirror */
+  canvas{display:none}
+  .bar{display:flex;gap:8px;margin-top:8px}
+  .bar .btn{flex:1 1 auto;padding:10px 12px;border-radius:10px;border:1px solid #e6e6e6;background:#fff;cursor:pointer;font-weight:600}
+  .bar .btn.ok{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+  .person{display:flex;gap:6px}
+  .person .who{flex:1 1 auto;padding:10px;border-radius:10px;border:1px solid #e6e6e6;background:#fff;font-weight:600;text-align:center}
+  .person .in{background:#e8f6ee;border-color:#bfe8d0;color:#0d5e2f}
+  .person .out{background:#fff3f2;border-color:#ffd3cf;color:#82271d}
+  .person button{cursor:pointer}
+  /* Toast */
+  .toast{position:fixed;left:12px;right:12px;bottom:12px;background:#fff;border:1px solid #e6e6e6;box-shadow:0 8px 30px rgba(0,0,0,.08);
+         border-radius:12px;padding:12px 14px;font-weight:700;display:flex;align-items:center;gap:10px;min-height:52px}
+  .toast.ok{border-color:#bfe8d0;background:#f3fbf6;color:#0f6b37}
+  .toast.err{border-color:#ffd3cf;background:#fff7f6;color:#a12f23}
+  .toast .dot{width:10px;height:10px;border-radius:50%}
+  .toast.ok .dot{background:var(--ok)} .toast.err .dot{background:var(--err)}
+  .toast .sub{font-weight:500;color:#555;font-size:13px}
+  .hide{display:none}
+  .muted{font-size:12px;color:#666}
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Fichaje</h1>
-    <div class="cam"><video id="cam" playsinline autoplay muted></video></div>
-    <div class="grid" id="buttons"></div>
-  </div>
+<div class="app">
+  <header>
+    <h1>Fichajes</h1>
+    <div id="ver" title="Versión backend"></div>
+  </header>
 
-  <div id="toast" class="toast">Listo</div>
+  <div class="row">
+    <div class="col">
+      <div class="panel">
+        <h2>Cámara (selfie)</h2>
+        <div class="body">
+          <div class="camWrap">
+            <video id="cam" playsinline autoplay muted></video>
+            <canvas id="snap"></canvas>
+          </div>
+          <div class="muted">La imagen se invierte solo en pantalla (selfie). Lo guardado sale en orientación correcta.</div>
+          <div class="bar">
+            <button class="btn" id="btnEntrada">Entrada</button>
+            <button class="btn" id="btnSalida">Salida</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="panel">
+        <h2>Trabajadores</h2>
+        <div class="body">
+          <div class="grid" id="people"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast hide"><div class="dot"></div><div><div id="tm"></div><div class="sub" id="tsub"></div></div></div>
+
+<!-- Beep en data URI (44.1kHz, corto) -->
+<audio id="beep" preload="auto"
+src="data:audio/wav;base64,UklGRhQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABYAAAAAAABmZmZmZmZmZmZmZmYA"></audio>
 
 <script>
+/*** CONFIG ***/
 const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxlR17AJQw87pZgALcfRTE__1ud65aXrRj7B0OG7tu3Lj5s1bCsFRw09WS81qDa2Q-k/exec';
-const trabajadores = ["Ana Lopez Martin","Carla Gomez Torres","Luis Fernandez Diaz","Diego Perez Ruiz"];
+const trabajadores = [
+  'Jose Lopez', 'Raquel Ruiz', 'Carmen Garcia', 'Antonio Perez',
+  'Marta Diaz', 'Luis Martin', 'Ana Lopez', 'Juan Sanchez'
+]; // edítalo a tu lista (sin tildes)
 
-const $ = s=>document.querySelector(s);
-
-// Cámara frontal
-(async()=>{ try{
-  const stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user' }, audio:false });
-  $('#cam').srcObject = stream;
-} catch(e){ toast('Sin permiso de cámara','err'); }})();
-
-// Botones
-const cont = document.getElementById('buttons');
-trabajadores.forEach(n=>{
-  cont.appendChild(btn(`${n} — Entrada`,'in', ()=>fichar(n,'entrada')));
-  cont.appendChild(btn(`${n} — Salida` ,'out',()=>fichar(n,'salida')));
-});
-function btn(txt, cls, on){ const b=document.createElement('button'); b.className=cls; b.textContent=txt; b.onclick=on; return b; }
-
-// Fichar
-async function fichar(nombre,tipo){
-  toast(`${nombre} — enviando…`);
-
-  const photoB64 = await snapshotBase64($('#cam'), true);
-
-  try{
-    await fetch(WEBAPP_URL, { method:'POST', mode:'no-cors', body: JSON.stringify({ nombre, tipo, photo: photoB64 }) });
-  }catch(_){}
-
-  // pequeño margen antes de comprobar
-  await new Promise(r=>setTimeout(r,700));
-
-  try{
-    await jsonpCheck({ nombre }, 9000);
-    const hhmm = new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    toast(`OK ${nombre} — ${hhmm} — enviado`,'ok', true);
-  }catch(_){
-    toast(`${nombre} — no confirmado`,'err');
-  }
+/*** UI helpers ***/
+const $ = sel => document.querySelector(sel);
+function toast(msg, kind='info', beep=false, sub=''){
+  const el = $('#toast');
+  $('#tm').textContent = msg;
+  $('#tsub').textContent = sub || '';
+  el.classList.remove('hide','ok','err');
+  if (kind==='ok') el.classList.add('ok');
+  if (kind==='err') el.classList.add('err');
+  if (beep) { const a=$('#beep'); a.currentTime=0; a.play().catch(()=>{}); }
+  clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.add('hide'), 3000);
 }
 
-// Helpers
-async function snapshotBase64(video, mirror=false){
-  const vw=video.videoWidth||640, vh=video.videoHeight||480, W=720, H=Math.round(720*vh/vw);
-  const c=Object.assign(document.createElement('canvas'),{width:W,height:H}), ctx=c.getContext('2d');
-  if (mirror){ ctx.translate(W,0); ctx.scale(-1,1); } // selfie también en la foto
-  ctx.drawImage(video,0,0,W,H);
-  const dataUrl=c.toDataURL('image/jpeg',0.8);
-  return dataUrl.replace(/^data:image\/\w+;base64,/, '');
+function hhmmss(){ return new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+
+/*** Cámara (selfie) ***/
+async function initCamera(){
+  const v = $('#cam');
+  // Prefer selfie; si falla, trasera
+  const constraintsA = { video: { facingMode:'user', width:{ideal:720}, height:{ideal:960} }, audio:false };
+  const constraintsB = { video: { facingMode:'environment', width:{ideal:720}, height:{ideal:960} }, audio:false };
+  try{ v.srcObject = await navigator.mediaDevices.getUserMedia(constraintsA); }
+  catch(_){ v.srcObject = await navigator.mediaDevices.getUserMedia(constraintsB); v.style.transform=''; } // si es trasera, no volteamos
 }
 
+function snapshotBase64(videoEl, asJpeg=true, quality=0.85){
+  const v = (typeof videoEl==='string') ? $(videoEl) : videoEl;
+  const c = $('#snap'), w = v.videoWidth || 720, h = v.videoHeight || 960;
+  // Canvas tamaño razonable para subir rápido
+  const maxW = 720; const scale = Math.min(1, maxW / w);
+  c.width = Math.round(w*scale); c.height = Math.round(h*scale);
+  const ctx = c.getContext('2d');
+  ctx.save();
+  // Si está espejado en pantalla (selfie), deshacerlo al guardar
+  const mirrored = getComputedStyle(v).transform.includes('matrix(-1');
+  if (mirrored){ ctx.translate(c.width,0); ctx.scale(-1,1); }
+  ctx.drawImage(v, 0, 0, c.width, c.height);
+  ctx.restore();
+  return c.toDataURL(asJpeg? 'image/jpeg':'image/png', quality);
+}
+
+/*** JSONP check con reintentos rápidos (solo memoria) ***/
 function jsonpCheck({nombre}, timeoutMs=9000){
+  const deadline = Date.now() + timeoutMs;
   return new Promise((resolve,reject)=>{
-    const cb='cb'+Math.random().toString(36).slice(2);
-    const s=document.createElement('script');
-    const url=`${WEBAPP_URL}?check=1&nombre=${encodeURIComponent(nombre)}&callback=${cb}`;
-    const to=setTimeout(()=>{ cleanup(); reject(new Error('timeout')); }, timeoutMs);
-    window[cb]=(r)=>{ cleanup(); (r && r.ok)?resolve():reject(new Error('not ok')); };
-    s.src=url; s.onerror=()=>{ cleanup(); reject(new Error('jsonp error')); };
-    document.body.appendChild(s);
-    function cleanup(){ clearTimeout(to); delete window[cb]; s.remove(); }
+    const tryOnce = ()=>{
+      const cb='cb'+Math.random().toString(36).slice(2);
+      const s=document.createElement('script');
+      const url=`${WEBAPP_URL}?check=1&nombre=${encodeURIComponent(nombre)}&t=${Date.now()}&callback=${cb}`;
+      const to=setTimeout(()=>{ cleanup(); next(); }, 900);
+      window[cb]=(r)=>{ cleanup(); (r && r.ok) ? resolve(r) : next(); };
+      s.src=url; s.onerror=()=>{ cleanup(); next(); };
+      document.body.appendChild(s);
+      function cleanup(){ clearTimeout(to); delete window[cb]; s.remove(); }
+      function next(){ if(Date.now()>=deadline) reject(new Error('timeout')); else setTimeout(tryOnce, 280); }
+    };
+    tryOnce();
   });
 }
 
-// Toast + beep
-let toastTimer=null;
-function toast(msg, kind, beep=false){
-  const el = $('#toast');
-  el.textContent = msg;
-  el.classList.remove('ok','err');
-  if (kind) el.classList.add(kind);
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=> el.classList.remove('show'), 2500);
-  if (beep) playBeep();
+/*** Fichar ***/
+async function fichar(nombre,tipo){
+  toast(`${nombre} — enviando…`, 'info', false, hhmmss());
+  // foto primero (sin bloquear demasiado)
+  const photoB64 = await snapshotBase64($('#cam'), true, 0.8);
+
+  // POST no-cors (rápido); la confirmación no depende de la respuesta HTTP
+  try{
+    await fetch(WEBAPP_URL, {
+      method:'POST', mode:'no-cors',
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' }, // evita CORS preflight
+      body: JSON.stringify({ nombre, tipo, photo: photoB64 })
+    });
+  }catch(_){ /* ignorar */ }
+
+  // margen corto antes del check en memoria
+  await new Promise(r=>setTimeout(r, 500));
+
+  try{
+    const r = await jsonpCheck({ nombre }, 9000);
+    toast(`OK ${nombre} — ${hhmmss()} — enviado`, 'ok', true);
+  }catch(_){
+    toast(`${nombre} — no confirmado`, 'err');
+  }
 }
-function playBeep(){
-  const ctx=new (window.AudioContext||window.webkitAudioContext)();
-  const o=ctx.createOscillator(), g=ctx.createGain();
-  o.type='sine'; o.frequency.value=880; o.connect(g); g.connect(ctx.destination);
-  g.gain.setValueAtTime(0.001,ctx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.2,ctx.currentTime+0.01);
-  g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.25);
-  o.start(); o.stop(ctx.currentTime+0.26);
+
+/*** UI: montar lista y botones ***/
+function renderPeople(){
+  const root = $('#people'); root.innerHTML='';
+  trabajadores.forEach(n=>{
+    const row = document.createElement('div'); row.className='person';
+    const who = document.createElement('div'); who.className='who'; who.textContent=n;
+    const bi  = document.createElement('button'); bi.className='in'; bi.textContent='Entrada';
+    const bo  = document.createElement('button'); bo.className='out'; bo.textContent='Salida';
+    bi.onclick = ()=>fichar(n,'entrada');
+    bo.onclick = ()=>fichar(n,'salida');
+    row.appendChild(who); row.appendChild(bi); row.appendChild(bo);
+    root.appendChild(row);
+  });
 }
+
+async function pingVersion(){
+  return new Promise(res=>{
+    const cb='cb'+Math.random().toString(36).slice(2);
+    const s=document.createElement('script');
+    s.src = `${WEBAPP_URL}?ping=1&callback=${cb}&t=${Date.now()}`;
+    window[cb]=(r)=>{ $('#ver').textContent = r && r.version ? `backend: ${r.version}` : 'backend: n/d'; cleanup(); res(); };
+    s.onerror=()=>{ $('#ver').textContent='backend: error'; cleanup(); res(); };
+    function cleanup(){ delete window[cb]; s.remove(); }
+    document.body.appendChild(s);
+  });
+}
+
+/*** Botones rápidos arriba ***/
+function wireQuickButtons(){
+  $('#btnEntrada').onclick = ()=> {
+    const n = trabajadores[0] || 'Trabajador';
+    fichar(n,'entrada');
+  };
+  $('#btnSalida').onclick = ()=> {
+    const n = trabajadores[0] || 'Trabajador';
+    fichar(n,'salida');
+  };
+}
+
+/*** Init ***/
+(async function(){
+  renderPeople();
+  wireQuickButtons();
+  await initCamera();
+  await pingVersion();
+})();
 </script>
 </body>
 </html>
