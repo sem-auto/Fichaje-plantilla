@@ -3,35 +3,45 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Fichaje — Botones por trabajador</title>
+<title>Fichaje — Botones + Cámara</title>
 <style>
-  :root{ --gap:16px; --r:18px; --w:1100px; --btnH:84px; }
+  :root{ --gap:14px; --r:16px; --w:1100px; --btnH:78px; }
   *{ box-sizing:border-box; }
-  html,body{ height:100%; margin:0; font-family:system-ui, Arial, sans-serif; background:#eef2f6; color:#111; }
-  .wrap{ max-width:var(--w); margin:24px auto; padding:0 var(--gap); }
-  h1{ margin:0 0 16px; font-size:28px; font-weight:800; }
-  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px var(--gap); }
+  html,body{ margin:0; font-family:system-ui,Arial,sans-serif; background:#eef2f6; color:#111; }
+  .wrap{ max-width:var(--w); margin:22px auto; padding:0 var(--gap); }
+
+  h1{ margin:0 0 14px; font-size:26px; font-weight:800; }
+
+  .layout{ display:grid; grid-template-columns: 1fr 260px; gap:16px; }
+  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px 14px; align-content:start; }
+
   .cell{ display:flex; align-items:center; justify-content:center; height:var(--btnH);
-         border-radius:16px; font-weight:800; font-size:20px; color:#fff; cursor:pointer; user-select:none;
-         transition:transform .05s ease-out, filter .15s ease; text-align:center; padding:0 10px; }
+         border-radius:16px; font-weight:800; font-size:19px; color:#fff; cursor:pointer; user-select:none;
+         transition:transform .05s ease-out, filter .15s ease; text-align:center; padding:0 10px; position:relative; }
+  .in { background:#1f8f44; }  .out{ background:#c63c3c; }
   .cell:active{ transform:scale(.995); filter:brightness(.98); }
-  .in { background:#1f8f44; }
-  .out{ background:#c63c3c; }
-  .cell[aria-busy="true"]{ position:relative; }
+
+  /* RECTÁNGULO "Enviando…" sobre el botón pulsado */
   .cell[aria-busy="true"]::after{
     content:"Enviando…"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    background:rgba(0,0,0,.15); border-radius:inherit; font-weight:800; color:#fff;
+    background:rgba(0,0,0,.18); border-radius:inherit; font-weight:800; color:#fff;
   }
   .okflash{ box-shadow:0 0 0 3px rgba(16,185,129,.55) inset; }
   .errflash{ box-shadow:0 0 0 3px rgba(239,68,68,.65) inset; }
-  .footer{ margin-top:14px; border-radius:12px; padding:10px 12px; font-weight:700; text-align:center; }
-  .status-ok{ background:#e7f9ef; color:#0f6b35; }
-  .status-err{ background:#fdecec; color:#a21919; }
-  .note{ margin-top:8px; font-size:12px; color:#445; opacity:.8; text-align:center; }
-  @media (max-width:720px){
-    :root{ --btnH:72px; }
-    .grid{ gap:10px; }
-    .cell{ font-size:18px; }
+
+  /* Panel cámara pequeño */
+  .side{ background:#fff; border-radius:16px; box-shadow:0 6px 24px rgba(0,0,0,.08); padding:12px; }
+  .side h3{ margin:0 0 8px; font-size:15px; font-weight:800; }
+  .cam{ width:100%; aspect-ratio: 4 / 3; background:#000; border-radius:12px; overflow:hidden; }
+  video,canvas{ width:100%; height:100%; display:block; }
+  .hint{ margin-top:6px; font-size:12px; color:#445; opacity:.8; }
+
+  .footer{ margin-top:12px; border-radius:12px; padding:9px 12px; font-weight:700; text-align:center; }
+  .status-ok{ background:#e7f9ef; color:#0f6b35; } .status-err{ background:#fdecec; color:#a21919; }
+
+  @media (max-width: 900px){
+    :root{ --btnH:70px; }
+    .layout{ grid-template-columns:1fr; }
   }
 </style>
 </head>
@@ -39,136 +49,153 @@
 <div class="wrap">
   <h1>Fichaje rápido</h1>
 
-  <!-- PAREJA DE COLUMNAS: ENTRADA / SALIDA -->
-  <div id="grid" class="grid" role="grid" aria-label="Botones de fichaje"></div>
+  <div class="layout">
+    <!-- BOTONES -->
+    <div id="grid" class="grid" role="grid" aria-label="Botones de fichaje"></div>
+
+    <!-- CÁMARA (pequeña) -->
+    <aside class="side">
+      <h3>Cámara (auto)</h3>
+      <div class="cam">
+        <video id="video" playsinline autoplay muted></video>
+        <canvas id="canvas" hidden></canvas>
+      </div>
+      <div id="camStatus" class="hint"></div>
+    </aside>
+  </div>
 
   <div id="status" class="footer" hidden></div>
-  <div class="note">Pulsa el botón. Sonará un beep al confirmar. Si no hay confirmación de red, se indicará abajo.</div>
 </div>
 
 <script>
 /*** CONFIG ***/
-const ENDPOINT = 'PON_AQUI_TU_URL_WEBAPP/exec'; // GAS Web App → “Cualquiera, incluso anónimo”
+const ENDPOINT = 'PON_AQUI_TU_URL_WEBAPP/exec'; // GAS Web App (Cualquiera, incluso anónimo)
 const WORKERS  = [
   'Ana López Martín',
   'Carla Gómez Torres',
   'Luis Fernández Díaz',
   'Diego Pérez Ruiz'
 ];
+const TARGET_WIDTH = 640;       // captura rápida
+const JPEG_QUALITY = 0.6;
 
-/*** AUDIO (beep) ***/
+/*** DOM refs ***/
+const grid = document.getElementById('grid');
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const camStatus = document.getElementById('camStatus');
+const statusBox = document.getElementById('status');
+
+/*** AUDIO ***/
 let audioUnlocked=false;
 function unlockAudioOnce(){
   if (audioUnlocked) return;
-  try {
-    const AC = window.AudioContext||window.webkitAudioContext;
-    const a  = new AC(); const o=a.createOscillator(); const g=a.createGain();
-    o.connect(g); g.connect(a.destination); g.gain.value=0; o.start(); o.stop(0); a.close();
-    audioUnlocked=true;
+  try { const AC=window.AudioContext||window.webkitAudioContext;
+    const a=new AC(); const o=a.createOscillator(); const g=a.createGain();
+    o.connect(g); g.connect(a.destination); g.gain.value=0; o.start(); o.stop(0); a.close(); audioUnlocked=true;
   } catch(_) {}
 }
 function beepOk(){
-  try{
-    const AC = window.AudioContext||window.webkitAudioContext;
-    const a  = new AC(); const o=a.createOscillator(); const g=a.createGain();
-    o.connect(g); g.connect(a.destination);
-    o.type='sine'; o.frequency.value=880; g.gain.setValueAtTime(0.06, a.currentTime);
-    o.start(); setTimeout(()=>{o.stop(); a.close();},120);
+  try{ const AC=window.AudioContext||window.webkitAudioContext;
+    const a=new AC(); const o=a.createOscillator(); const g=a.createGain();
+    o.connect(g); g.connect(a.destination); o.type='sine'; o.frequency.value=880;
+    g.gain.setValueAtTime(0.06,a.currentTime); o.start(); setTimeout(()=>{o.stop();a.close();},120);
   }catch(_){}
 }
 
-/*** UTIL ***/
-function el(tag, attrs={}, text=''){
-  const n=document.createElement(tag);
-  for(const k in attrs){ if(k==='class') n.className=attrs[k]; else n.setAttribute(k, attrs[k]); }
-  if(text) n.textContent=text;
-  return n;
-}
-function showStatus(msg, ok=true){
-  const s = document.getElementById('status');
-  s.className = 'footer ' + (ok?'status-ok':'status-err');
-  s.textContent = msg;
-  s.hidden = false;
+/*** Cámara ***/
+let camReady=false;
+(async function initCamera(){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({ video:{facingMode:'user'}, audio:false });
+    video.srcObject=stream;
+    await video.play().catch(()=>{});
+    camReady=true; camStatus.textContent='Cámara lista';
+  }catch(e){
+    camReady=false; camStatus.textContent='Sin acceso a cámara (se enviará sin foto)';
+  }
+})();
+function captureToDataURL(){
+  if(!camReady || !video.videoWidth || !video.videoHeight) return '';
+  const vw=video.videoWidth, vh=video.videoHeight;
+  const scale=TARGET_WIDTH/vw, tw=Math.round(vw*scale), th=Math.round(vh*scale);
+  canvas.width=tw; canvas.height=th;
+  const ctx=canvas.getContext('2d',{willReadFrequently:false});
+  ctx.drawImage(video,0,0,tw,th);
+  return canvas.toDataURL('image/jpeg', JPEG_QUALITY);
 }
 
-/*** JSONP helpers ***/
+/*** Util ***/
+function el(tag, attrs={}, text=''){ const n=document.createElement(tag);
+  for(const k in attrs){ if(k==='class') n.className=attrs[k]; else n.setAttribute(k, attrs[k]); }
+  if(text) n.textContent=text; return n;
+}
+function showStatus(msg, ok=true){ statusBox.className='footer '+(ok?'status-ok':'status-err'); statusBox.textContent=msg; statusBox.hidden=false; }
+function flash(node, ok=true){ node.classList.remove('okflash','errflash'); node.classList.add(ok?'okflash':'errflash'); setTimeout(()=>node.classList.remove('okflash','errflash'), 900); }
+
+/*** JSONP / POST ***/
 function jsonp(url, onDone){
-  const cb = 'cb_' + Math.random().toString(36).slice(2);
-  window[cb] = (data)=>{ try{ onDone(data); } finally{ delete window[cb]; scr.remove(); } };
-  const scr = el('script', { src: url + (url.includes('?')?'&':'?') + 'callback=' + cb });
-  scr.onerror = ()=>{ try{ onDone({ok:false,error:'JSONP error'}); } finally{ delete window[cb]; scr.remove(); } };
+  const cb='cb_'+Math.random().toString(36).slice(2);
+  window[cb]=(data)=>{ try{ onDone(data); } finally{ delete window[cb]; scr.remove(); } };
+  const scr=el('script',{src:url+(url.includes('?')?'&':'?')+'callback='+cb});
+  scr.onerror=()=>{ try{ onDone({ok:false,error:'JSONP error'}); } finally{ delete window[cb]; scr.remove(); } };
   document.head.appendChild(scr);
+}
+async function postJSON(url, payload, timeoutMs=15000){
+  const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(), timeoutMs);
+  try{
+    const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:ctrl.signal});
+    return await res.json().catch(()=>({ok:false,error:'Respuesta inválida'}));
+  } finally{ clearTimeout(to); }
 }
 function confirmReceipt(nombre, afterIso, attempts=8, delayMs=400){
   return new Promise(resolve=>{
     const step=(left)=>{
-      const u = `${ENDPOINT}?check=1&nombre=${encodeURIComponent(nombre)}&after=${encodeURIComponent(afterIso)}`;
-      jsonp(u, r=>{
-        if(r && r.ok) return resolve(true);
-        if(left>1) return setTimeout(()=>step(left-1), delayMs);
-        resolve(false);
-      });
-    };
-    step(attempts);
+      const u=`${ENDPOINT}?check=1&nombre=${encodeURIComponent(nombre)}&after=${encodeURIComponent(afterIso)}`;
+      jsonp(u, r=>{ if(r && r.ok) resolve(true); else if(left>1) setTimeout(()=>step(left-1), delayMs); else resolve(false); });
+    }; step(attempts);
   });
 }
 
-/*** UI BUILD ***/
-const grid = document.getElementById('grid');
+/*** Construcción UI (dos columnas: entrada/salida) ***/
 WORKERS.forEach(n=>{
-  // Entrada
-  const inBtn  = el('div', {class:'cell in', role:'button', 'data-nombre':n, 'data-tipo':'entrada', tabindex:'0'},
-                    `${n} — Entrada`);
-  // Salida
-  const outBtn = el('div', {class:'cell out', role:'button', 'data-nombre':n, 'data-tipo':'salida', tabindex:'0'},
-                    `${n} — Salida`);
-  grid.appendChild(inBtn);
-  grid.appendChild(outBtn);
+  grid.appendChild(el('div',{class:'cell in',  role:'button','data-nombre':n,'data-tipo':'entrada',tabindex:'0'},`${n} — Entrada`));
+  grid.appendChild(el('div',{class:'cell out', role:'button','data-nombre':n,'data-tipo':'salida', tabindex:'0'},`${n} — Salida`));
 });
 
-/*** CLICK HANDLER ***/
-grid.addEventListener('click', onAction);
-grid.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ onAction(e); e.preventDefault(); } });
+/*** Interacción ***/
+grid.addEventListener('click', handle);
+grid.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ handle(e); e.preventDefault(); } });
 
-function onAction(e){
+function handle(e){
   unlockAudioOnce();
-  const t = e.target.closest('.cell'); if(!t) return;
-  if (t.getAttribute('aria-busy')==='true') return;
+  const t=e.target.closest('.cell'); if(!t) return;
+  if(t.getAttribute('aria-busy')==='true') return;
 
-  const nombre = t.getAttribute('data-nombre');
-  const tipo   = t.getAttribute('data-tipo');
-  const afterIso = new Date().toISOString();
-
+  const nombre=t.getAttribute('data-nombre');
+  const tipo=t.getAttribute('data-tipo');
+  const afterIso=new Date().toISOString();
   t.setAttribute('aria-busy','true');
 
-  // FASE 1: Fichaje rápido por GET (JSONP) => OK + beep inmediato
-  const url = `${ENDPOINT}?nombre=${encodeURIComponent(nombre)}&tipo=${encodeURIComponent(tipo)}&sinPausa=false`;
-  jsonp(url, async (r)=>{
+  // Fase 1: GET rápido (JSONP) → OK + beep; muestra rectángulo "Enviando…" en el botón pulsado
+  const url=`${ENDPOINT}?nombre=${encodeURIComponent(nombre)}&tipo=${encodeURIComponent(tipo)}&sinPausa=false`;
+  jsonp(url, async r=>{
     t.removeAttribute('aria-busy');
 
-    if(!r || !r.ok){
-      flash(t, false);
-      showStatus(`${nombre} — error: ${(r && (r.msg||r.error)) || 'desconocido'}`, false);
-      return;
-    }
+    if(!r || !r.ok){ flash(t,false); showStatus(`${nombre} — error: ${(r && (r.msg||r.error))||'desconocido'}`, false); return; }
 
-    flash(t, true);
-    beepOk();
-    showStatus(`${nombre} — ${tipo} OK ${r.hora}`, true);
+    flash(t,true); beepOk(); showStatus(`${nombre} — ${tipo} OK ${r.hora}`, true);
 
-    // FASE 2: Confirmación silenciosa (evita falsos “no confirmado”)
-    const ok = await confirmReceipt(nombre, afterIso, 8, 400);
-    if(!ok){
-      // No machacamos el OK; solo informativo (como en tu captura).
-      showStatus(`${nombre} — no confirmado (revisa conexión)`, false);
-    }
+    // Fase 2: Foto en background (si hay cámara)
+    try{
+      const durl=captureToDataURL();
+      if(durl) postJSON(ENDPOINT,{ token:r.token, photo:durl }).then(x=>{ if(!x.ok) console.log('Foto err:',x.error||x.msg); });
+    }catch(_){}
+
+    // Confirmación silenciosa (para evitar falsos "no confirmado")
+    const ok=await confirmReceipt(nombre, afterIso, 8, 400);
+    if(!ok) showStatus(`${nombre} — no confirmado (revisa conexión)`, false);
   });
-}
-
-function flash(node, ok=true){
-  node.classList.remove('okflash','errflash');
-  node.classList.add(ok?'okflash':'errflash');
-  setTimeout(()=>node.classList.remove('okflash','errflash'), 900);
 }
 </script>
 </body>
