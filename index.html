@@ -3,72 +3,88 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Fichaje (Foto automática)</title>
+  <title>Fichaje (foto)</title>
   <style>
-    :root { --gap:14px; --radius:16px; }
+    :root { --gap:14px; --radius:16px; --statusH:52px; }
     * { box-sizing:border-box; }
     html, body { height:100%; margin:0; }
-
-    body {
+    body{
       background:#f4f6f8; color:#111; font-family:system-ui, Arial, sans-serif;
-      display:grid; grid-template-rows:auto 1fr auto; gap:var(--gap);
-      height:100dvh; padding:var(--gap);
+      min-height:100dvh; padding:var(--gap);
+      padding-bottom: calc(var(--gap) + var(--statusH)); /* deja hueco a la barra fija */
+    }
+    header{ text-align:center; font-weight:800; font-size:22px; margin-bottom:var(--gap); }
+
+    /* Contenido principal con scroll si hace falta */
+    main.content{
+      max-width:900px; margin:0 auto;
+      display:grid; gap:var(--gap);
+      grid-template-rows: auto auto; /* cámara y luego botones */
     }
 
-    header { text-align:center; font-weight:800; font-size:22px; }
-
-    /* Cámara */
-    .cam { display:grid; grid-template-rows:1fr auto; gap:8px; height:42dvh; }
-    video {
+    /* Cámara (altura contenida) */
+    .cam{
+      display:grid; gap:8px;
+      grid-template-rows: 1fr auto;
+      height: clamp(26dvh, 38dvh, 44dvh);  /* más baja para dejar sitio a botones */
+    }
+    video{
       width:100%; height:100%; display:block; object-fit:cover;
       background:#000; border-radius:var(--radius); transform:scaleX(-1);
     }
-    .ghost { background:#111; color:#fff; border:0; border-radius:var(--radius); padding:14px; font-size:18px; font-weight:700; }
-
-    /* Botones */
-    .grid {
-      display:grid; grid-template-columns:1fr 1fr; gap:var(--gap);
+    .ghost{
+      background:#111; color:#fff; border:0; border-radius:var(--radius);
+      padding:14px; font-size:18px; font-weight:700; cursor:pointer;
     }
-    @media (max-width:900px) { .grid { grid-template-columns:1fr; } }
-    button.in, button.out {
+
+    /* Botones trabajadores */
+    .grid{
+      display:grid; gap:var(--gap);
+      grid-template-columns: 1fr 1fr;
+    }
+    @media (max-width:900px){ .grid{ grid-template-columns:1fr; } } /* tablet vertical: 1 columna */
+    button.in, button.out{
       width:100%; border:0; border-radius:var(--radius);
-      font-size:22px; font-weight:800; cursor:pointer;
-      padding:24px; height:90px; /* altura táctil XXL */
+      font-size:20px; font-weight:800; cursor:pointer;
+      padding:22px; height:88px;  /* XXL táctil */
     }
     .in  { background:#16a34a; color:#fff; }
     .out { background:#dc2626; color:#fff; }
-    button:active { transform:scale(.97); }
+    button:active{ transform:scale(.98); }
 
-    /* Estado fijo */
-    .status {
-      position:fixed; bottom:0; left:0; right:0;
-      background:#fff; border-top:2px solid #ddd;
-      font-family:ui-monospace, Menlo, Consolas, monospace;
-      font-size:16px; text-align:center; padding:10px;
+    /* Barra de estado fija inferior */
+    .status{
+      position:fixed; left:0; right:0; bottom:0; height:var(--statusH);
+      display:flex; align-items:center; justify-content:center;
+      background:#fff; border-top:1px solid #ddd;
+      font-family:ui-monospace, Menlo, Consolas, monospace; font-size:15px;
+      padding:0 10px; text-align:center;
     }
   </style>
 </head>
 <body>
   <header>Fichaje</header>
 
-  <section class="cam">
-    <video id="preview" playsinline autoplay muted></video>
-    <button class="ghost" id="btnCam" type="button">Activar cámara</button>
-  </section>
+  <main class="content">
+    <section class="cam">
+      <video id="preview" playsinline autoplay muted></video>
+      <button class="ghost" id="btnCam" type="button">Activar cámara</button>
+    </section>
 
-  <section class="grid">
-    <button class="in"  onclick="fichar(N.ANA,   'entrada')">Ana López Martín — Entrada</button>
-    <button class="out" onclick="fichar(N.ANA,   'salida')">Ana López Martín — Salida</button>
+    <section class="grid">
+      <button class="in"  onclick="fichar(N.ANA,   'entrada')">Ana López Martín — Entrada</button>
+      <button class="out" onclick="fichar(N.ANA,   'salida')">Ana López Martín — Salida</button>
 
-    <button class="in"  onclick="fichar(N.DIEGO, 'entrada')">Diego Pérez Ruiz — Entrada</button>
-    <button class="out" onclick="fichar(N.DIEGO, 'salida')">Diego Pérez Ruiz — Salida</button>
+      <button class="in"  onclick="fichar(N.DIEGO, 'entrada')">Diego Pérez Ruiz — Entrada</button>
+      <button class="out" onclick="fichar(N.DIEGO, 'salida')">Diego Pérez Ruiz — Salida</button>
 
-    <button class="in"  onclick="fichar(N.CARLA, 'entrada')">Carla Gómez Torres — Entrada</button>
-    <button class="out" onclick="fichar(N.CARLA, 'salida')">Carla Gómez Torres — Salida</button>
+      <button class="in"  onclick="fichar(N.CARLA, 'entrada')">Carla Gómez Torres — Entrada</button>
+      <button class="out" onclick="fichar(N.CARLA, 'salida')">Carla Gómez Torres — Salida</button>
 
-    <button class="in"  onclick="fichar(N.LUIS,  'entrada')">Luis Fernández Díaz — Entrada</button>
-    <button class="out" onclick="fichar(N.LUIS,  'salida')">Luis Fernández Díaz — Salida</button>
-  </section>
+      <button class="in"  onclick="fichar(N.LUIS,  'entrada')">Luis Fernández Díaz — Entrada</button>
+      <button class="out" onclick="fichar(N.LUIS,  'salida')">Luis Fernández Díaz — Salida</button>
+    </section>
+  </main>
 
   <div class="status" id="status">Listo.</div>
 
@@ -82,35 +98,34 @@ const N = {
   LUIS:  'Luis Fernández Díaz',
 };
 
-/* === CÁMARA === */
+/* === Cámara === */
 let stream = null;
 const videoEl  = document.getElementById('preview');
 const statusEl = document.getElementById('status');
 const btnCam   = document.getElementById('btnCam');
 
-async function startCam() {
-  try {
-    if (stream) stream.getTracks().forEach(t => t.stop());
+async function startCam(){
+  try{
+    if (stream) stream.getTracks().forEach(t=>t.stop());
     stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'user' } }, audio:false });
     videoEl.srcObject = stream;
     await videoEl.play();
     btnCam.textContent = 'Cámara activa';
     btnCam.disabled = true;
     setStatus('Cámara activa.');
-  } catch (e) {
+  }catch(e){
     setStatus('Permite la cámara (candado → Cámara: Permitir). Error: ' + e.message);
   }
 }
 btnCam.addEventListener('click', startCam);
 if (location.protocol === 'https:') startCam();
 
-/* === CAPTURA REDUCIDA === */
-function snapshotDataURL() {
+/* === Captura reducida === */
+function snapshotDataURL(){
   const srcW = videoEl.videoWidth || 640, srcH = videoEl.videoHeight || 480;
   const maxW = 800;
   const scale = Math.min(1, maxW / srcW);
   const w = Math.round(srcW * scale), h = Math.round(srcH * scale);
-
   const c = document.createElement('canvas'); c.width=w; c.height=h;
   const ctx = c.getContext('2d');
   ctx.translate(w,0); ctx.scale(-1,1);
@@ -120,25 +135,25 @@ function snapshotDataURL() {
 
 /* === Beep éxito === */
 function beep(ms=120, freq=880, vol=0.07){
-  try {
+  try{
     const Ctx = window.AudioContext || window.webkitAudioContext;
     const ctx = new Ctx();
     const o = ctx.createOscillator(), g = ctx.createGain();
     o.type = 'sine'; o.frequency.value = freq; g.gain.value = vol;
     o.connect(g); g.connect(ctx.destination); o.start();
     setTimeout(()=>{ o.stop(); ctx.close(); }, ms);
-  } catch(_) {}
+  }catch(_){}
 }
 
-/* === ENVÍO === */
-async function fichar(nombre, tipo) {
-  try {
+/* === Envío === */
+async function fichar(nombre, tipo){
+  try{
     if (!stream) { await startCam(); if (!stream) return; }
     const dataUrl = snapshotDataURL();
     const fd = new FormData();
     fd.append('nombre', nombre);
     fd.append('tipo',   tipo);
-    fd.append('photo',  dataUrl);
+    fd.append('photo',  dataUrl);   // dataURL completo
 
     setStatus(`Enviando: ${nombre} — ${tipo}...`);
     await fetch(WEBAPP_URL, { method:'POST', mode:'no-cors', body: fd });
@@ -146,7 +161,7 @@ async function fichar(nombre, tipo) {
     if (navigator.vibrate) navigator.vibrate(60);
     beep();
     setStatus(`✔ OK ${nombre} — ${tipo}`);
-  } catch (e) {
+  }catch(e){
     setStatus('Error: ' + e.message);
   }
 }
