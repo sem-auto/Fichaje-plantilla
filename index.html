@@ -15,11 +15,13 @@
   .wrap{ width:100%; max-width:920px; background:#fff; border-radius:16px; box-shadow:0 8px 26px rgba(0,0,0,.08); padding:16px 16px 18px; }
   h1{ margin:0 0 10px 0; font-size:22px; font-weight:800; text-align:center; }
   .cam{ border-radius:14px; background:#000; overflow:hidden; margin-bottom:12px; height:360px; }
+  /* Selfie en previsualización */
   video{ width:100%; height:100%; object-fit:cover; display:block; background:#000; transform:scaleX(-1); }
   .grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   button{ cursor:pointer; border:none; font-size:18px; padding:18px; border-radius:12px; font-weight:700; color:#fff; }
   .in{ background:#28a745; } .out{ background:#dc3545; }
 
+  /* Pastilla blanca (toast) */
   .toast{
     position:fixed; left:50%; bottom:14px; transform:translateX(-50%) translateY(8px);
     min-width:260px; max-width:90vw; padding:10px 14px; border-radius:12px;
@@ -88,7 +90,7 @@ async function fichar(nombre,tipo){
 async function snapshotBase64(video, mirror=false){
   const vw=video.videoWidth||640, vh=video.videoHeight||480, W=720, H=Math.round(720*vh/vw);
   const c=Object.assign(document.createElement('canvas'),{width:W,height:H}), ctx=c.getContext('2d');
-  if (mirror){ ctx.translate(W,0); ctx.scale(-1,1); }
+  if (mirror){ ctx.translate(W,0); ctx.scale(-1,1); } // selfie también en la foto
   ctx.drawImage(video,0,0,W,H);
   const dataUrl=c.toDataURL('image/jpeg',0.8);
   return dataUrl.replace(/^data:image\/\w+;base64,/, '');
