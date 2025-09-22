@@ -1,12 +1,11 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Fichaje</title>
+<title>Fichaje (foto)</title>
 <style>
-  :root { --gap:14px; --radius:14px; --statusH:56px; }
+  :root { --gap:12px; --radius:14px; --statusH:48px; }
   *{ box-sizing:border-box; }
   html,body{ height:100%; margin:0; }
   body{
@@ -15,66 +14,68 @@
     padding-bottom: calc(var(--gap) + var(--statusH));
     display:grid; place-items:center;
   }
-  .card{
+  .wrap{
     width:100%; max-width:560px; background:#fff; border-radius:var(--radius);
     box-shadow:0 6px 20px rgba(0,0,0,.08); padding:16px;
   }
-  h1{ margin:0 0 8px 0; font-size:18px; }
+  h1{ margin:0 0 8px 0; font-size:18px; font-weight:700; }
   .row{ display:flex; gap:10px; margin:10px 0; }
-  input,select,button{ font-size:16px; padding:12px; border-radius:12px; border:1px solid #ddd; }
-  input,select{ flex:1; }
-  button{ cursor:pointer; border:none; background:#0d6efd; color:#fff; min-width:140px; }
-  button.sal{ background:#dc3545; }
-  video,canvas{ width:100%; border-radius:12px; background:#000; }
+  input{ flex:1; font-size:16px; padding:12px; border-radius:12px; border:1px solid #ddd; }
+  label{ display:flex; align-items:center; gap:8px; font-size:14px; color:#333; }
+  button{ cursor:pointer; border:none; font-size:16px; padding:12px 18px; border-radius:12px; color:#fff; }
+  .in{ background:#0d6efd; }
+  .out{ background:#dc3545; }
+  video{ width:100%; border-radius:12px; background:#000; aspect-ratio:16/9; }
+  .actions{ display:flex; justify-content:space-between; gap:10px; margin-top:10px; }
   .status{
     position:fixed; left:0; right:0; bottom:0; height:var(--statusH);
     background:#10151a; color:#fff; display:flex; align-items:center; justify-content:center;
-    font-weight:600; padding:0 12px;
+    font-weight:600; padding:0 12px; text-align:center;
   }
   .ok{ background:#0a7d24 !important; }
   .err{ background:#8a0f0f !important; }
 </style>
 </head>
 <body>
-  <div class="card">
+  <div class="wrap">
     <h1>Fichaje con foto</h1>
-
     <div class="row">
       <input id="nombre" placeholder="Nombre y apellidos" autocomplete="off" />
     </div>
-
     <div class="row">
       <label><input type="checkbox" id="sinPausa" /> Sin pausa</label>
     </div>
 
     <video id="cam" playsinline autoplay muted></video>
 
-    <div class="row" style="justify-content:space-between">
-      <button id="btnEntrada">Fichar ENTRADA</button>
-      <button id="btnSalida"  class="sal">Fichar SALIDA</button>
+    <div class="actions">
+      <button class="in"  id="btnEntrada">Fichar ENTRADA</button>
+      <button class="out" id="btnSalida">Fichar SALIDA</button>
     </div>
   </div>
 
   <div id="status" class="status">Preparado</div>
 
 <script>
-const WEBAPP_URL = 'https://script.google.com/macros/s/ID_WEBAPP/exec'; // ← pon tu URL
+const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxlR17AJQw87pZgALcfRTE__1ud65aXrRj7B0OG7tu3Lj5s1bCsFRw09WS81qDa2Q-k/exec'; // ← pon tu URL
 
 const $ = (s)=>document.querySelector(s);
 const statusEl = $('#status');
 
 let stream;
-(async ()=>{
+initCam();
+
+$('#btnEntrada').onclick = ()=>fichar('entrada');
+$('#btnSalida').onclick  = ()=>fichar('salida');
+
+async function initCam(){
   try{
     stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user' }, audio:false });
     $('#cam').srcObject = stream;
   }catch(e){
-    setStatus('No hay permiso de cámara', true);
+    setStatus('Sin permiso de cámara', true);
   }
-})();
-
-$('#btnEntrada').onclick = ()=>fichar('entrada');
-$('#btnSalida').onclick  = ()=>fichar('salida');
+}
 
 async function fichar(tipo){
   const nombre = String($('#nombre').value||'').trim();
@@ -82,41 +83,30 @@ async function fichar(tipo){
 
   setStatus('Enviando…');
 
-  // 1) captura foto a JPEG base64
-  const photoB64 = await snapshotBase64($('#cam'));
+  // 1) Foto a base64 (JPEG)
+  const b64 = await snapshotBase64($('#cam'));
 
-  // 2) marca temporal para JSONP
+  // 2) Marca temporal para confirmar en hoja
   const afterIso = new Date().toISOString();
 
-  // 3) POST al GAS (no dependemos de la respuesta → no-cors)
+  // 3) POST rápido (no bloquea UI)
   try{
-    await fetch(https://script.google.com/macros/s/AKfycbxlR17AJQw87pZgALcfRTE__1ud65aXrRj7B0OG7tu3Lj5s1bCsFRw09WS81qDa2Q-k/exec, {
+    await fetch(WEBAPP_URL, {
       method:'POST',
       mode:'no-cors',
       headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({
-        nombre, tipo, sinPausa: $('#sinPausa').checked, photo: photoB64
-      })
+      body: JSON.stringify({ nombre, tipo, sinPausa: $('#sinPausa').checked, photo: b64 })
     });
-  }catch(e){
-    // seguimos; confirmaremos por JSONP
-  }
+  }catch(_){ /* seguimos a JSONP */ }
 
-  // 4) Confirmación JSONP de que la FILA ya está en Sheets
+  // 4) Confirmación JSONP de fila escrita en Sheets
   try{
-    await jsonpCheck({ nombre, tipo, afterIso }, 6000); // timeout 6s
+    await jsonpCheck({ nombre, tipo, afterIso }, 6000);
     const hhmm = new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
     setStatus(`OK ${nombre} — ${hhmm}`, false, true); // beep
-  }catch(e){
-    setStatus('No confirmado (sin cobertura). Reintenta.', true);
+  }catch(_){
+    setStatus('No confirmado (reintenta o revisa conexión)', true);
   }
-}
-
-function setStatus(txt, error=false, beep=false){
-  statusEl.textContent = txt;
-  statusEl.classList.remove('ok','err');
-  statusEl.classList.add(error?'err':'ok');
-  if (beep) playBeep();
 }
 
 async function snapshotBase64(video){
@@ -134,9 +124,7 @@ function jsonpCheck({nombre, tipo, afterIso}, timeoutMs=6000){
     const cb = 'cb'+Math.random().toString(36).slice(2);
     const s  = document.createElement('script');
     const url = `${WEBAPP_URL}?check=1&nombre=${encodeURIComponent(nombre)}&tipo=${encodeURIComponent(tipo)}&after=${encodeURIComponent(afterIso)}&callback=${cb}`;
-    const to = setTimeout(()=>{
-      cleanup(); reject(new Error('timeout'));
-    }, timeoutMs);
+    const to = setTimeout(()=>{ cleanup(); reject(new Error('timeout')); }, timeoutMs);
 
     window[cb] = (r)=>{ cleanup(); (r && r.ok) ? resolve() : reject(new Error('not ok')); };
     s.src = url; s.onerror = ()=>{ cleanup(); reject(new Error('jsonp error')); };
@@ -150,14 +138,21 @@ function jsonpCheck({nombre, tipo, afterIso}, timeoutMs=6000){
   });
 }
 
-// Beep sin archivos (WebAudio)
+function setStatus(txt, error=false, beep=false){
+  statusEl.textContent = txt;
+  statusEl.classList.remove('ok','err');
+  statusEl.classList.add(error?'err':'ok');
+  if (beep) playBeep();
+}
+
+// Beep WebAudio (sin archivos)
 function playBeep(){
   const ctx = new (window.AudioContext||window.webkitAudioContext)();
   const o = ctx.createOscillator(), g = ctx.createGain();
-  o.type = 'sine'; o.frequency.value = 880; // A5
+  o.type='sine'; o.frequency.value=880;
   o.connect(g); g.connect(ctx.destination);
   g.gain.setValueAtTime(0.001, ctx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime+0.01);
+  g.gain.exponentialRampToValueAtTime(0.2,   ctx.currentTime+0.01);
   g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.25);
   o.start(); o.stop(ctx.currentTime+0.26);
 }
