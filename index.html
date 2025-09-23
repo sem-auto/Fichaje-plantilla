@@ -6,33 +6,33 @@
 <title>Fichaje — Cámara arriba + Botones compactos</title>
 <style>
   :root{
-    --gap:14px; --r:16px; --maxw:1100px;
-    --btnH:64px; --btnFS:19px;
+    --gap:12px; --r:14px; --maxw:1100px;
+    --btnH:50px; --btnFS:17px;
     --green:#1f8f44; --green2:#13813a;
     --red:#c63c3c;  --red2:#b03333;
   }
   *{ box-sizing:border-box; }
   html,body{ margin:0; font-family:system-ui,Arial,sans-serif; background:#eef2f6; color:#0f172a; }
-  .wrap{ max-width:var(--maxw); margin:18px auto 92px; padding:0 var(--gap); } /* margen inferior para el rectángulo */
-  h1{ margin:0 0 10px; font-size:28px; font-weight:800; letter-spacing:.2px; }
+  .wrap{ max-width:var(--maxw); margin:16px auto 96px; padding:0 var(--gap); }
+  h1{ margin:0 0 10px; font-size:26px; font-weight:800; letter-spacing:.2px; }
 
   /* Cámara arriba, centrada */
-  .camWrap{ display:flex; justify-content:center; margin:6px 0 16px; }
-  .card{ width:360px; background:#fff; border-radius:18px; box-shadow:0 10px 30px rgba(15,23,42,.08); padding:12px; }
-  .card h3{ margin:0 0 8px; font-size:15px; font-weight:800; text-align:center; color:#0f172a; }
-  .cam{ width:100%; aspect-ratio: 4 / 3; background:#000; border-radius:12px; overflow:hidden; }
+  .camWrap{ display:flex; justify-content:center; margin:4px 0 14px; }
+  .card{ width:320px; background:#fff; border-radius:16px; box-shadow:0 10px 28px rgba(15,23,42,.08); padding:10px; }
+  .card h3{ margin:0 0 6px; font-size:14px; font-weight:800; text-align:center; color:#0f172a; }
+  .cam{ width:100%; aspect-ratio: 4 / 3; background:#000; border-radius:10px; overflow:hidden; }
   video,canvas{ width:100%; height:100%; display:block; }
   .hint{ margin-top:6px; font-size:12px; color:#666; text-align:center; }
 
-  /* Botones en dos columnas compactos */
-  .layout{ display:grid; grid-template-columns: 1fr 1fr; gap:12px 16px; align-items:start; }
-  .col{ display:grid; grid-template-columns:1fr; gap:12px; }
+  /* Botones: dos columnas más pequeños */
+  .layout{ display:grid; grid-template-columns: 1fr 1fr; gap:10px 14px; align-items:start; }
+  .col{ display:grid; grid-template-columns:1fr; gap:10px; }
 
   .cell{
     position:relative; display:flex; align-items:center; justify-content:center;
-    height:var(--btnH); border-radius:16px; color:#fff; font-weight:800; font-size:var(--btnFS);
-    user-select:none; cursor:pointer; padding:0 12px; text-align:center;
-    box-shadow:0 6px 16px rgba(0,0,0,.08), inset 0 -2px 0 rgba(0,0,0,.08);
+    height:var(--btnH); border-radius:12px; color:#fff; font-weight:800; font-size:var(--btnFS);
+    user-select:none; cursor:pointer; padding:0 10px; text-align:center;
+    box-shadow:0 4px 12px rgba(0,0,0,.08), inset 0 -2px 0 rgba(0,0,0,.08);
     transition:transform .06s ease, filter .12s ease, box-shadow .12s ease;
   }
   .cell:active{ transform:translateY(1px); filter:brightness(.98); }
@@ -45,23 +45,24 @@
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     background:rgba(0,0,0,.20); border-radius:inherit; font-weight:800; color:#fff;
   }
-  .okflash{ box-shadow:0 0 0 3px rgba(16,185,129,.55) inset, 0 6px 16px rgba(0,0,0,.08); }
-  .errflash{ box-shadow:0 0 0 3px rgba(239,68,68,.65) inset, 0 6px 16px rgba(0,0,0,.08); }
+  .okflash{ box-shadow:0 0 0 3px rgba(16,185,129,.55) inset, 0 4px 12px rgba(0,0,0,.08); }
+  .errflash{ box-shadow:0 0 0 3px rgba(239,68,68,.65) inset, 0 4px 12px rgba(0,0,0,.08); }
 
-  /* Rectángulo inferior (estado) */
-  .toast{
-    position:fixed; left:50%; bottom:16px; transform:translateX(-50%);
-    min-width:280px; max-width: min(680px, 90vw);
-    padding:12px 16px; border-radius:12px; font-weight:700; text-align:center;
-    box-shadow:0 10px 30px rgba(0,0,0,.15);
+  /* Rectángulo blanco inferior fijo */
+  .bar{
+    position:fixed; left:50%; bottom:14px; transform:translateX(-50%);
+    width: min(820px, 92vw);
+    background:#fff; border-radius:14px; box-shadow:0 14px 34px rgba(0,0,0,.18);
+    padding:10px 14px; display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:16px; letter-spacing:.2px;
   }
-  .toast.ok  { background:#e7f9ef; color:#0f6b35; }
-  .toast.err { background:#fdecec; color:#a21919; }
-  .toast[hidden]{ display:none; }
+  .msg-ok  { color:#0f6b35; }
+  .msg-err { color:#a21919; }
+  .bar[hidden]{ display:none; }
 
   @media (max-width:780px){
-    :root{ --btnH:58px; --btnFS:17px; }
-    .card{ width:92vw; max-width:420px; }
+    :root{ --btnH:46px; --btnFS:16px; }
+    .card{ width:92vw; max-width:360px; }
     .layout{ grid-template-columns:1fr; }
   }
 </style>
@@ -89,8 +90,8 @@
   </div>
 </div>
 
-<!-- Rectángulo inferior (estado) -->
-<div id="toast" class="toast ok" hidden>OK</div>
+<!-- Rectángulo blanco inferior -->
+<div id="bar" class="bar"><span id="barMsg" class="msg-ok">Listo</span></div>
 
 <script>
 /*** CONFIG ***/
@@ -101,13 +102,14 @@ const WORKERS  = [
   'Luis Fernández Díaz',
   'Diego Pérez Ruiz'
 ];
-const TARGET_WIDTH = 640;   // captura rápida
+const TARGET_WIDTH = 640;
 const JPEG_QUALITY = 0.6;
 
 /*** DOM ***/
 const colIn  = document.getElementById('colIn');
 const colOut = document.getElementById('colOut');
-const toast  = document.getElementById('toast');
+const bar    = document.getElementById('bar');
+const barMsg = document.getElementById('barMsg');
 const video  = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const camStatus = document.getElementById('camStatus');
@@ -157,7 +159,7 @@ function el(tag, attrs={}, text=''){ const n=document.createElement(tag);
   if(text) n.textContent=text; return n;
 }
 function flash(node, ok=true){ node.classList.remove('okflash','errflash'); node.classList.add(ok?'okflash':'errflash'); setTimeout(()=>node.classList.remove('okflash','errflash'), 900); }
-function showToast(msg, ok=true){ toast.className='toast '+(ok?'ok':'err'); toast.textContent=msg; toast.hidden=false; }
+function setBar(msg, ok=true){ barMsg.textContent=msg; barMsg.className = ok ? 'msg-ok' : 'msg-err'; }
 
 /*** JSONP/POST ***/
 function jsonp(url, onDone){
@@ -205,17 +207,18 @@ function onClick(e){
   const afterIso=new Date().toISOString();
 
   t.setAttribute('aria-busy','true'); // overlay “Enviando…”
+  setBar('Enviando…', true);
 
   // Fase 1: GET rápido (JSONP) → OK + beep
   const url=`${ENDPOINT}?nombre=${encodeURIComponent(nombre)}&tipo=${encodeURIComponent(tipo)}&sinPausa=false`;
   jsonp(url, async r=>{
     t.removeAttribute('aria-busy');
 
-    if(!r || !r.ok){ flash(t,false); showToast(`${nombre} — error: ${(r && (r.msg||r.error))||'desconocido'}`, false); return; }
+    if(!r || !r.ok){ flash(t,false); setBar(`${nombre} — error: ${(r && (r.msg||r.error))||'desconocido'}`, false); return; }
 
     flash(t,true);
     beepOk();
-    showToast(`${nombre} — ${tipo} OK ${r.hora}`, true);
+    setBar(`${nombre} — ${tipo} OK ${r.hora}`, true);
 
     // Fase 2: Foto en background (si hay cámara)
     try{
@@ -226,7 +229,7 @@ function onClick(e){
 
     // Confirmación silenciosa (evita falsos “no confirmado”)
     const ok=await confirmReceipt(nombre, afterIso, 8, 400);
-    if(!ok) showToast(`${nombre} — no confirmado (revisa conexión)`, false);
+    if(!ok) setBar(`${nombre} — no confirmado (revisa conexión)`, false);
   });
 }
 </script>
