@@ -3,75 +3,56 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Fichaje — Cámara arriba + Botones compactos</title>
+<title>Fichaje — Simple</title>
 <style>
-  :root{
-    --gap:12px; --r:14px; --maxw:1100px;
-    --btnH:50px; --btnFS:17px;
-    --green:#1f8f44; --green2:#13813a;
-    --red:#c63c3c;  --red2:#b03333;
-  }
-  *{ box-sizing:border-box; }
-  html,body{ margin:0; font-family:system-ui,Arial,sans-serif; background:#eef2f6; color:#0f172a; }
+  :root{ --gap:12px; --r:14px; --maxw:1100px; --btnH:56px; --btnFS:18px;
+         --green:#1f8f44; --green2:#13813a; --red:#c63c3c; --red2:#b03333; }
+  *{ box-sizing:border-box }
+  body{ margin:0; font-family:system-ui,Arial,sans-serif; background:#eef2f6; color:#0f172a; }
   .wrap{ max-width:var(--maxw); margin:16px auto 96px; padding:0 var(--gap); }
-  h1{ margin:0 0 10px; font-size:26px; font-weight:800; letter-spacing:.2px; }
+  h1{ margin:0 0 10px; font-size:26px; font-weight:800; }
 
-  /* Cámara arriba, centrada */
-  .camWrap{ display:flex; justify-content:center; margin:4px 0 14px; }
+  /* Cámara centrada */
+  .camWrap{ display:flex; justify-content:center; margin:6px 0 14px; }
   .card{ width:320px; background:#fff; border-radius:16px; box-shadow:0 10px 28px rgba(15,23,42,.08); padding:10px; }
-  .card h3{ margin:0 0 6px; font-size:14px; font-weight:800; text-align:center; color:#0f172a; }
-  .cam{ width:100%; aspect-ratio: 4 / 3; background:#000; border-radius:10px; overflow:hidden; }
-  video,canvas{ width:100%; height:100%; display:block; }
-  .hint{ margin-top:6px; font-size:12px; color:#666; text-align:center; }
+  .card h3{ margin:0 0 6px; font-size:14px; font-weight:800; text-align:center; }
+  .cam{ width:100%; aspect-ratio:4/3; background:#000; border-radius:10px; overflow:hidden; }
+  video,canvas{ width:100%; height:100%; display:block }
+  .hint{ margin-top:6px; font-size:12px; color:#666; text-align:center }
 
-  /* Botones: dos columnas más pequeños */
-  .layout{ display:grid; grid-template-columns: 1fr 1fr; gap:10px 14px; align-items:start; }
-  .col{ display:grid; grid-template-columns:1fr; gap:10px; }
-
-  .cell{
-    position:relative; display:flex; align-items:center; justify-content:center;
-    height:var(--btnH); border-radius:12px; color:#fff; font-weight:800; font-size:var(--btnFS);
-    user-select:none; cursor:pointer; padding:0 10px; text-align:center;
-    box-shadow:0 4px 12px rgba(0,0,0,.08), inset 0 -2px 0 rgba(0,0,0,.08);
+  /* Lista de trabajadores: una fila = un botón */
+  .list{ display:grid; gap:10px }
+  .row{ display:flex; gap:10px; align-items:center }
+  .name{ flex:1; background:#fff; border-radius:12px; padding:0 12px; height:var(--btnH);
+         display:flex; align-items:center; font-weight:700; box-shadow:0 2px 8px rgba(0,0,0,.06) }
+  .btn{
+    min-width:180px; height:var(--btnH); border-radius:12px; color:#fff; font-weight:800; font-size:var(--btnFS);
+    display:flex; align-items:center; justify-content:center; padding:0 12px; cursor:pointer; user-select:none;
+    box-shadow:0 4px 12px rgba(0,0,0,.08), inset 0 -2px 0 rgba(0,0,0,.08); position:relative;
     transition:transform .06s ease, filter .12s ease, box-shadow .12s ease;
   }
-  .cell:active{ transform:translateY(1px); filter:brightness(.98); }
-  .in  { background:linear-gradient(180deg, var(--green), var(--green2)); }
-  .out { background:linear-gradient(180deg, var(--red),   var(--red2));  }
-
-  /* Overlay “Enviando…” */
-  .cell[aria-busy="true"]::after{
-    content:"Enviando…";
-    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  .btn:active{ transform:translateY(1px); filter:brightness(.98) }
+  .btn.in { background:linear-gradient(180deg,var(--green),var(--green2)) }
+  .btn.out{ background:linear-gradient(180deg,var(--red),var(--red2)) }
+  .btn[aria-busy="true"]::after{
+    content:"Enviando…"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     background:rgba(0,0,0,.20); border-radius:inherit; font-weight:800; color:#fff;
   }
-  .okflash{ box-shadow:0 0 0 3px rgba(16,185,129,.55) inset, 0 4px 12px rgba(0,0,0,.08); }
-  .errflash{ box-shadow:0 0 0 3px rgba(239,68,68,.65) inset, 0 4px 12px rgba(0,0,0,.08); }
+  .okflash { box-shadow:0 0 0 3px rgba(16,185,129,.55) inset, 0 4px 12px rgba(0,0,0,.08) }
+  .errflash{ box-shadow:0 0 0 3px rgba(239,68,68,.65) inset, 0 4px 12px rgba(0,0,0,.08) }
 
-  /* Rectángulo blanco inferior fijo */
-  .bar{
-    position:fixed; left:50%; bottom:14px; transform:translateX(-50%);
-    width: min(820px, 92vw);
-    background:#fff; border-radius:14px; box-shadow:0 14px 34px rgba(0,0,0,.18);
-    padding:10px 14px; display:flex; align-items:center; justify-content:center;
-    font-weight:800; font-size:16px; letter-spacing:.2px;
-  }
-  .msg-ok  { color:#0f6b35; }
-  .msg-err { color:#a21919; }
-  .bar[hidden]{ display:none; }
-
-  @media (max-width:780px){
-    :root{ --btnH:46px; --btnFS:16px; }
-    .card{ width:92vw; max-width:360px; }
-    .layout{ grid-template-columns:1fr; }
-  }
+  /* Barra blanca inferior */
+  .bar{ position:fixed; left:50%; bottom:14px; transform:translateX(-50%); width:min(820px,92vw);
+        background:#fff; border-radius:14px; box-shadow:0 14px 34px rgba(0,0,0,.18);
+        padding:10px 14px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:16px; }
+  .msg-ok{ color:#0f6b35 } .msg-err{ color:#a21919 } .bar[hidden]{ display:none }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Fichaje rápido</h1>
 
-  <!-- CÁMARA ARRIBA, CENTRADA -->
+  <!-- CÁMARA -->
   <div class="camWrap">
     <section class="card">
       <h3>Cámara (auto)</h3>
@@ -83,155 +64,113 @@
     </section>
   </div>
 
-  <!-- BOTONES: IZQ ENTRADA / DCHA SALIDA -->
-  <div class="layout">
-    <div id="colIn"  class="col" aria-label="Entradas"></div>
-    <div id="colOut" class="col" aria-label="Salidas"></div>
-  </div>
+  <!-- LISTA -->
+  <div id="list" class="list" aria-label="Fichaje"></div>
 </div>
 
-<!-- Rectángulo blanco inferior -->
-<div id="bar" class="bar"><span id="barMsg" class="msg-ok">Listo</span></div>
+<div id="bar" class="bar" hidden><span id="barMsg" class="msg-ok">Listo</span></div>
 
 <script>
-/*** CONFIG ***/
-const ENDPOINT = 'PON_AQUI_TU_URL_WEBAPP/exec';    // GAS Web App → “Cualquiera, incluso anónimo”
-const WORKERS  = [
-  'Ana López Martín',
-  'Carla Gómez Torres',
-  'Luis Fernández Díaz',
-  'Diego Pérez Ruiz'
-];
-const TARGET_WIDTH = 640;
-const JPEG_QUALITY = 0.6;
+const ENDPOINT='PON_AQUI_TU_URL_WEBAPP/exec';
+const WORKERS=['Ana López Martín','Carla Gómez Torres','Luis Fernández Díaz','Diego Pérez Ruiz'];
+const TARGET_WIDTH=640, JPEG_QUALITY=0.6;
 
-/*** DOM ***/
-const colIn  = document.getElementById('colIn');
-const colOut = document.getElementById('colOut');
-const bar    = document.getElementById('bar');
-const barMsg = document.getElementById('barMsg');
-const video  = document.getElementById('video');
-const canvas = document.getElementById('canvas');
-const camStatus = document.getElementById('camStatus');
+const list=document.getElementById('list'), bar=document.getElementById('bar'), barMsg=document.getElementById('barMsg');
+const video=document.getElementById('video'), canvas=document.getElementById('canvas'), camStatus=document.getElementById('camStatus');
 
-/*** AUDIO ***/
-let audioUnlocked=false;
-function unlockAudioOnce(){
-  if (audioUnlocked) return;
-  try { const AC=window.AudioContext||window.webkitAudioContext;
-    const a=new AC(); const o=a.createOscillator(); const g=a.createGain();
-    o.connect(g); g.connect(a.destination); g.gain.value=0; o.start(); o.stop(0); a.close(); audioUnlocked=true;
-  } catch(_) {}
-}
-function beepOk(){
-  try{ const AC=window.AudioContext||window.webkitAudioContext;
-    const a=new AC(); const o=a.createOscillator(); const g=a.createGain();
-    o.connect(g); g.connect(a.destination); o.type='sine'; o.frequency.value=880;
-    g.gain.setValueAtTime(0.06,a.currentTime); o.start(); setTimeout(()=>{o.stop();a.close();},120);
-  }catch(_){}
-}
-
-/*** Cámara ***/
+/* Cámara */
 let camReady=false;
-(async function initCamera(){
+(async function(){
   try{
-    const stream=await navigator.mediaDevices.getUserMedia({ video:{facingMode:'user'}, audio:false });
-    video.srcObject=stream;
-    await video.play().catch(()=>{});
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
+    video.srcObject=stream; await video.play().catch(()=>{});
     camReady=true; camStatus.textContent='Cámara lista';
-  }catch(e){
-    camReady=false; camStatus.textContent='Sin acceso a cámara (se enviará sin foto)';
-  }
+  }catch(_){ camReady=false; camStatus.textContent='Sin acceso a cámara (se enviará sin foto)'; }
 })();
-function captureToDataURL(){
-  if(!camReady || !video.videoWidth || !video.videoHeight) return '';
-  const vw=video.videoWidth, vh=video.videoHeight;
-  const scale=TARGET_WIDTH/vw, tw=Math.round(vw*scale), th=Math.round(vh*scale);
-  canvas.width=tw; canvas.height=th;
-  const ctx=canvas.getContext('2d',{willReadFrequently:false});
-  ctx.drawImage(video,0,0,tw,th);
+function photoDataURL(){
+  if(!camReady||!video.videoWidth) return '';
+  const vw=video.videoWidth, vh=video.videoHeight, scale=TARGET_WIDTH/vw;
+  canvas.width=Math.round(vw*scale); canvas.height=Math.round(vh*scale);
+  canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
   return canvas.toDataURL('image/jpeg', JPEG_QUALITY);
 }
 
-/*** Utils ***/
-function el(tag, attrs={}, text=''){ const n=document.createElement(tag);
-  for(const k in attrs){ if(k==='class') n.className=attrs[k]; else n.setAttribute(k, attrs[k]); }
-  if(text) n.textContent=text; return n;
+/* Audio */
+let audioUnlocked=false;
+function unlockAudio(){ if(audioUnlocked) return;
+  try{ const AC=window.AudioContext||window.webkitAudioContext; const a=new AC(), o=a.createOscillator(), g=a.createGain();
+    o.connect(g); g.connect(a.destination); g.gain.value=0; o.start(); o.stop(0); a.close(); audioUnlocked=true; }catch(_){}
 }
-function flash(node, ok=true){ node.classList.remove('okflash','errflash'); node.classList.add(ok?'okflash':'errflash'); setTimeout(()=>node.classList.remove('okflash','errflash'), 900); }
-function setBar(msg, ok=true){ barMsg.textContent=msg; barMsg.className = ok ? 'msg-ok' : 'msg-err'; }
+function beep(){ try{ const AC=window.AudioContext||window.webkitAudioContext; const a=new AC(), o=a.createOscillator(), g=a.createGain();
+  o.connect(g); g.connect(a.destination); o.type='sine'; o.frequency.value=880; g.gain.setValueAtTime(0.06,a.currentTime);
+  o.start(); setTimeout(()=>{o.stop();a.close();},120);}catch(_){}
+}
 
-/*** JSONP/POST ***/
-function jsonp(url, onDone){
-  const cb='cb_'+Math.random().toString(36).slice(2);
-  window[cb]=(data)=>{ try{ onDone(data); } finally{ delete window[cb]; scr.remove(); } };
-  const scr=el('script',{src:url+(url.includes('?')?'&':'?')+'callback='+cb});
-  scr.onerror=()=>{ try{ onDone({ok:false,error:'JSONP error'}); } finally{ delete window[cb]; scr.remove(); } };
-  document.head.appendChild(scr);
+/* Helpers */
+function rowEl(nombre){
+  const row=document.createElement('div'); row.className='row';
+  const name=document.createElement('div'); name.className='name'; name.textContent=nombre;
+  const btn=document.createElement('div'); btn.className='btn'; btn.setAttribute('role','button'); btn.tabIndex=0;
+  btn.textContent='…';
+  row.appendChild(name); row.appendChild(btn);
+  return {row,btn};
+}
+function setBar(msg,ok=true){ barMsg.textContent=msg; barMsg.className=ok?'msg-ok':'msg-err'; bar.hidden=false; }
+function flash(node,ok=true){ node.classList.remove('okflash','errflash'); node.classList.add(ok?'okflash':'errflash'); setTimeout(()=>node.classList.remove('okflash','errflash'),900); }
+
+/* Net */
+function jsonp(url, cb){
+  const id='cb_'+Math.random().toString(36).slice(2);
+  window[id]=(d)=>{ try{ cb(d); } finally{ delete window[id]; s.remove(); } };
+  const s=document.createElement('script'); s.src=url+(url.includes('?')?'&':'?')+'callback='+id;
+  s.onerror=()=>{ try{ cb({ok:false,error:'JSONP error'}) } finally{ delete window[id]; s.remove(); } };
+  document.head.appendChild(s);
 }
 async function postJSON(url, payload, timeoutMs=15000){
-  const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(), timeoutMs);
-  try{
-    const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:ctrl.signal});
-    return await res.json().catch(()=>({ok:false,error:'Respuesta inválida'}));
-  } finally{ clearTimeout(to); }
+  const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),timeoutMs);
+  try{ const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:ctrl.signal});
+       return await r.json().catch(()=>({ok:false,error:'Respuesta inválida'})); }
+  finally{ clearTimeout(to); }
 }
-function confirmReceipt(nombre, afterIso, attempts=8, delayMs=400){
-  return new Promise(resolve=>{
-    const step=(left)=>{
-      const u=`${ENDPOINT}?check=1&nombre=${encodeURIComponent(nombre)}&after=${encodeURIComponent(afterIso)}`;
-      jsonp(u, r=>{ if(r && r.ok) resolve(true); else if(left>1) setTimeout(()=>step(left-1), delayMs); else resolve(false); });
-    }; step(attempts);
+
+/* Lógica: decidir próximo tipo con el check (que ya devuelve tipo) */
+function nextTipoFrom(lastTipo){ return lastTipo==='entrada' ? 'salida' : 'entrada'; }
+function loadNext(nombre, btn){
+  btn.textContent='…'; btn.classList.remove('in','out');
+  const u=`${ENDPOINT}?check=1&nombre=${encodeURIComponent(nombre)}`;
+  jsonp(u, (r)=>{
+    const next= nextTipoFrom((r && r.tipo)||'salida'); // si no hay registro, proponemos 'entrada'
+    btn.dataset.next=next;
+    btn.classList.add(next==='entrada'?'in':'out');
+    btn.textContent= next==='entrada' ? 'Fichar ENTRADA' : 'Fichar SALIDA';
   });
 }
 
-/*** Botones (dos columnas) ***/
-WORKERS.forEach(n=>{
-  colIn.appendChild( el('div',{class:'cell in',  role:'button','data-nombre':n,'data-tipo':'entrada',tabindex:'0'},`${n} — Entrada`) );
-  colOut.appendChild(el('div',{class:'cell out', role:'button','data-nombre':n,'data-tipo':'salida', tabindex:'0'},`${n} — Salida`) );
+/* Render */
+WORKERS.forEach(nombre=>{
+  const {row,btn}=rowEl(nombre);
+  list.appendChild(row);
+  loadNext(nombre, btn);
+
+  const handler=()=>{
+    unlockAudio();
+    const next=btn.dataset.next||'entrada';
+    btn.setAttribute('aria-busy','true');
+    const url=`${ENDPOINT}?nombre=${encodeURIComponent(nombre)}&tipo=${encodeURIComponent(next)}&sinPausa=false`;
+    jsonp(url, async (r)=>{
+      btn.removeAttribute('aria-busy');
+      if(!r||!r.ok){ flash(btn,false); setBar(`${nombre} — error: ${(r&&(r.msg||r.error))||'desconocido'}`, false); return; }
+      flash(btn,true); beep(); setBar(`${nombre} — ${next} OK ${r.hora}`, true);
+      try{ const durl=photoDataURL(); if(durl) postJSON(ENDPOINT,{token:r.token, photo:durl}); }catch(_){}
+      // alterna a la siguiente acción:
+      btn.dataset.next = next === 'entrada' ? 'salida' : 'entrada';
+      btn.classList.toggle('in'); btn.classList.toggle('out');
+      btn.textContent = btn.dataset.next==='entrada' ? 'Fichar ENTRADA' : 'Fichar SALIDA';
+    });
+  };
+  btn.addEventListener('click', handler);
+  btn.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ handler(); e.preventDefault(); } });
 });
-
-/*** Interacción ***/
-[colIn,colOut].forEach(col=>{
-  col.addEventListener('click', onClick);
-  col.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ onClick(e); e.preventDefault(); } });
-});
-
-function onClick(e){
-  unlockAudioOnce();
-  const t=e.target.closest('.cell'); if(!t) return;
-  if(t.getAttribute('aria-busy')==='true') return;
-
-  const nombre=t.getAttribute('data-nombre');
-  const tipo=t.getAttribute('data-tipo');
-  const afterIso=new Date().toISOString();
-
-  t.setAttribute('aria-busy','true'); // overlay “Enviando…”
-  setBar('Enviando…', true);
-
-  // Fase 1: GET rápido (JSONP) → OK + beep
-  const url=`${ENDPOINT}?nombre=${encodeURIComponent(nombre)}&tipo=${encodeURIComponent(tipo)}&sinPausa=false`;
-  jsonp(url, async r=>{
-    t.removeAttribute('aria-busy');
-
-    if(!r || !r.ok){ flash(t,false); setBar(`${nombre} — error: ${(r && (r.msg||r.error))||'desconocido'}`, false); return; }
-
-    flash(t,true);
-    beepOk();
-    setBar(`${nombre} — ${tipo} OK ${r.hora}`, true);
-
-    // Fase 2: Foto en background (si hay cámara)
-    try{
-      const durl=captureToDataURL();
-      if(durl) postJSON(ENDPOINT,{ token:r.token, photo:durl })
-                .then(x=>{ if(!x.ok) console.log('Foto err:',x.error||x.msg); });
-    }catch(_){}
-
-    // Confirmación silenciosa (evita falsos “no confirmado”)
-    const ok=await confirmReceipt(nombre, afterIso, 8, 400);
-    if(!ok) setBar(`${nombre} — no confirmado (revisa conexión)`, false);
-  });
-}
 </script>
 </body>
 </html>
