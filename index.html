@@ -3,29 +3,25 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Fichaje — Cámara arriba + Botón único por trabajador</title>
+<title>Fichaje rápido</title>
 <style>
-  :root{
-    --gap:12px; --r:14px; --maxw:1100px;
-    --btnH:50px; --btnFS:17px;
-    --green:#1f8f44; --green2:#13813a;
-    --red:#c63c3c;  --red2:#b03333;
-  }
-  *{ box-sizing:border-box; }
-  html,body{ margin:0; font-family:system-ui,Arial,sans-serif; background:#eef2f6; color:#0f172a; }
-  .wrap{ max-width:var(--maxw); margin:16px auto 96px; padding:0 var(--gap); }
-  h1{ margin:0 0 10px; font-size:26px; font-weight:800; letter-spacing:.2px; }
+  :root{ --gap:12px; --maxw:1100px; --btnH:50px; --btnFS:17px;
+         --green:#1f8f44; --green2:#13813a; --red:#c63c3c; --red2:#b03333; }
+  *{ box-sizing:border-box }
+  body{ margin:0; font-family:system-ui,Arial,sans-serif; background:#eef2f6; color:#0f172a }
+  .wrap{ max-width:var(--maxw); margin:16px auto 96px; padding:0 var(--gap) }
+  h1{ margin:0 0 10px; font-size:26px; font-weight:800 }
 
   /* Cámara arriba (espejo solo UI) */
-  .camWrap{ display:flex; justify-content:center; margin:4px 0 14px; }
-  .card{ width:320px; background:#fff; border-radius:16px; box-shadow:0 10px 28px rgba(15,23,42,.08); padding:10px; }
-  .card h3{ margin:0 0 6px; font-size:14px; font-weight:800; text-align:center; color:#0f172a; }
-  .cam{ width:100%; aspect-ratio: 4 / 3; background:#000; border-radius:10px; overflow:hidden; }
-  video{ width:100%; height:100%; display:block; transform:scaleX(-1); }
-  canvas{ width:100%; height:100%; display:block; }
-  .hint{ margin-top:6px; font-size:12px; color:#666; text-align:center; }
+  .camWrap{ display:flex; justify-content:center; margin:4px 0 14px }
+  .card{ width:320px; background:#fff; border-radius:16px; box-shadow:0 10px 28px rgba(15,23,42,.08); padding:10px }
+  .card h3{ margin:0 0 6px; font-size:14px; font-weight:800; text-align:center }
+  .cam{ width:100%; aspect-ratio:4/3; background:#000; border-radius:10px; overflow:hidden }
+  video{ width:100%; height:100%; display:block; transform:scaleX(-1) } /* espejo UI */
+  canvas{ width:100%; height:100%; display:block }
+  .hint{ margin-top:6px; font-size:12px; color:#666; text-align:center }
 
-  /* Lista nombre + botón compacto (auto alterna ENTRADA/SALIDA) */
+  /* Lista */
   .list{ display:grid; gap:10px }
   .row{ display:flex; gap:10px; align-items:center }
   .name{ flex:1; background:#fff; border-radius:12px; padding:0 12px; height:var(--btnH);
@@ -36,39 +32,27 @@
     box-shadow:0 4px 12px rgba(0,0,0,.08), inset 0 -2px 0 rgba(0,0,0,.08); position:relative;
     transition:transform .06s ease, filter .12s ease, box-shadow .12s ease;
   }
-  .btn:active{ transform:translateY(1px); filter:brightness(.98); }
-  .btn.in  { background:linear-gradient(180deg, var(--green), var(--green2)); }
-  .btn.out { background:linear-gradient(180deg, var(--red),   var(--red2));  }
+  .btn:active{ transform:translateY(1px); filter:brightness(.98) }
+  .btn.in  { background:linear-gradient(180deg,var(--green),var(--green2)) }
+  .btn.out { background:linear-gradient(180deg,var(--red),var(--red2)) }
   .btn[aria-busy="true"]::after{
     content:"Enviando…"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     background:rgba(0,0,0,.20); border-radius:inherit; font-weight:800; color:#fff;
   }
-  .okflash { box-shadow:0 0 0 3px rgba(16,185,129,.55) inset, 0 4px 12px rgba(0,0,0,.08) }
+  .okflash{ box-shadow:0 0 0 3px rgba(16,185,129,.55) inset, 0 4px 12px rgba(0,0,0,.08) }
   .errflash{ box-shadow:0 0 0 3px rgba(239,68,68,.65) inset, 0 4px 12px rgba(0,0,0,.08) }
 
-  /* Rectángulo blanco inferior (estado) */
-  .bar{
-    position:fixed; left:50%; bottom:14px; transform:translateX(-50%);
-    width: min(820px, 92vw);
-    background:#fff; border-radius:14px; box-shadow:0 14px 34px rgba(0,0,0,.18);
-    padding:10px 14px; display:flex; align-items:center; justify-content:center;
-    font-weight:800; font-size:16px;
-  }
-  .msg-ok  { color:#0f6b35; }
-  .msg-err { color:#a21919; }
-  .bar[hidden]{ display:none; }
-
-  @media (max-width:780px){
-    :root{ --btnH:46px; --btnFS:16px; }
-    .card{ width:92vw; max-width:360px; }
-  }
+  /* Barra inferior */
+  .bar{ position:fixed; left:50%; bottom:14px; transform:translateX(-50%); width:min(820px,92vw);
+        background:#fff; border-radius:14px; box-shadow:0 14px 34px rgba(0,0,0,.18);
+        padding:10px 14px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:16px }
+  .msg-ok{ color:#0f6b35 } .msg-err{ color:#a21919 } .bar[hidden]{ display:none }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Fichaje rápido</h1>
 
-  <!-- CÁMARA -->
   <div class="camWrap">
     <section class="card">
       <h3>Cámara (auto)</h3>
@@ -80,176 +64,114 @@
     </section>
   </div>
 
-  <!-- LISTA TRABAJADORES -->
-  <div id="list" class="list" aria-label="Fichaje"></div>
+  <div id="list" class="list"></div>
 </div>
 
-<!-- Estado inferior -->
 <div id="bar" class="bar" hidden><span id="barMsg" class="msg-ok">Listo</span></div>
 
 <script>
 /*** CONFIG ***/
-const ENDPOINT = 'https://script.google.com/macros/s/AKfycbxlR17AJQw87pZgALcfRTE__1ud65aXrRj7B0OG7tu3Lj5s1bCsFRw09WS81qDa2Q-k/exec'; // tu WebApp
-const WORKERS  = ['Ana López Martín','Carla Gómez Torres','Luis Fernández Díaz','Diego Pérez Ruiz'];
-const TARGET_WIDTH = 640, JPEG_QUALITY = 0.6;
+const ENDPOINT='https://script.google.com/macros/s/AKfycbxlR17AJQw87pZgALcfRTE__1ud65aXrRj7B0OG7tu3Lj5s1bCsFRw09WS81qDa2Q-k/exec';
+const WORKERS=['Ana López Martín','Carla Gómez Torres','Luis Fernández Díaz','Diego Pérez Ruiz'];
+const TARGET_WIDTH=640, JPEG_QUALITY=0.6;
 
 /*** DOM ***/
-const list   = document.getElementById('list');
-const bar    = document.getElementById('bar');
-const barMsg = document.getElementById('barMsg');
-const video  = document.getElementById('video');
-const canvas = document.getElementById('canvas');
-const camStatus = document.getElementById('camStatus');
+const list=document.getElementById('list'), bar=document.getElementById('bar'), barMsg=document.getElementById('barMsg');
+const video=document.getElementById('video'), canvas=document.getElementById('canvas'), camStatus=document.getElementById('camStatus');
 
-/*** AUDIO ***/
+/*** AUDIO (beep inmediato tras OK) ***/
 let audioUnlocked=false;
-function unlockAudioOnce(){
-  if (audioUnlocked) return;
-  try {
-    const AC=window.AudioContext||window.webkitAudioContext;
-    const a=new AC(); const o=a.createOscillator(); const g=a.createGain();
-    o.connect(g); g.connect(a.destination); g.gain.value=0; o.start(); o.stop(0); a.close();
-    audioUnlocked=true;
-  } catch(_) {}
+function unlockAudioOnce(){ if(audioUnlocked) return;
+  try{ const AC=window.AudioContext||window.webkitAudioContext; const a=new AC(), o=a.createOscillator(), g=a.createGain();
+    o.connect(g); g.connect(a.destination); g.gain.value=0; o.start(); o.stop(0); a.close(); audioUnlocked=true; }catch(_){}
 }
-function beepOk(){
-  try{
-    const AC=window.AudioContext||window.webkitAudioContext;
-    const a=new AC(); const o=a.createOscillator(); const g=a.createGain();
-    o.connect(g); g.connect(a.destination);
-    o.type='sine'; o.frequency.value=880; g.gain.setValueAtTime(0.06,a.currentTime);
-    o.start(); setTimeout(()=>{o.stop(); a.close();},120);
-  }catch(_){}
-}
+function beepOk(){ try{ const AC=window.AudioContext||window.webkitAudioContext; const a=new AC(), o=a.createOscillator(), g=a.createGain();
+  o.connect(g); g.connect(a.destination); o.type='sine'; o.frequency.value=880; g.gain.setValueAtTime(0.06,a.currentTime);
+  o.start(); setTimeout(()=>{o.stop(); a.close();},120);}catch(_){} }
 
-/*** Cámara (espejo solo en video; canvas guarda normal) ***/
+/*** Cámara ***/
 let camReady=false;
-(async function initCamera(){
+(async function(){
   try{
-    const stream=await navigator.mediaDevices.getUserMedia({ video:{facingMode:'user'}, audio:false });
-    video.srcObject=stream;
-    await video.play().catch(()=>{});
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
+    video.srcObject=stream; await video.play().catch(()=>{});
     camReady=true; camStatus.textContent='Cámara lista';
-  }catch(e){
-    camReady=false; camStatus.textContent='Sin acceso a cámara (se enviará sin foto)';
-  }
+  }catch(_){ camReady=false; camStatus.textContent='Sin acceso a cámara (se enviará sin foto)'; }
 })();
-function captureToDataURL(){
-  if(!camReady || !video.videoWidth || !video.videoHeight) return '';
-  const vw=video.videoWidth, vh=video.videoHeight;
-  const scale=TARGET_WIDTH/vw, tw=Math.round(vw*scale), th=Math.round(vh*scale);
+function captureDataURL(){
+  if(!camReady||!video.videoWidth) return '';
+  const vw=video.videoWidth, vh=video.videoHeight, scale=TARGET_WIDTH/vw;
+  const tw=Math.round(vw*scale), th=Math.round(vh*scale);
   canvas.width=tw; canvas.height=th;
-  const ctx=canvas.getContext('2d',{willReadFrequently:false});
-  ctx.drawImage(video,0,0,tw,th); // sin espejo en la captura
+  canvas.getContext('2d').drawImage(video,0,0,tw,th); // sin espejo en captura
   return canvas.toDataURL('image/jpeg', JPEG_QUALITY);
 }
 
-/*** Utils ***/
-function el(tag, attrs={}, text=''){
-  const n=document.createElement(tag);
-  for(const k in attrs){ if(k==='class') n.className=attrs[k]; else n.setAttribute(k, attrs[k]); }
-  if(text) n.textContent=text;
-  return n;
-}
-function rowEl(nombre){
-  const row=el('div',{class:'row'});
-  const name=el('div',{class:'name'},nombre);
-  const btn =el('div',{class:'btn',role:'button',tabindex:'0'},'…');
-  row.appendChild(name); row.appendChild(btn);
-  return {row,btn};
-}
-function flash(node, ok=true){
-  node.classList.remove('okflash','errflash');
-  node.classList.add(ok?'okflash':'errflash');
-  setTimeout(()=>node.classList.remove('okflash','errflash'), 900);
-}
-function setBar(msg, ok=true){
-  barMsg.textContent=msg; barMsg.className = ok ? 'msg-ok' : 'msg-err'; bar.hidden=false;
-}
+/*** Utilidades ***/
+function el(tag,attrs={},txt=''){ const n=document.createElement(tag);
+  for(const k in attrs){ k==='class'? n.className=attrs[k] : n.setAttribute(k,attrs[k]); }
+  if(txt) n.textContent=txt; return n; }
+function rowEl(nombre){ const row=el('div',{class:'row'});
+  const name=el('div',{class:'name'},nombre); const btn=el('div',{class:'btn',role:'button',tabindex:'0'},'…');
+  row.appendChild(name); row.appendChild(btn); return {row,btn}; }
+function setBar(msg,ok=true){ barMsg.textContent=msg; barMsg.className=ok?'msg-ok':'msg-err'; bar.hidden=false; }
+function flash(n,ok=true){ n.classList.remove('okflash','errflash'); n.classList.add(ok?'okflash':'errflash'); setTimeout(()=>n.classList.remove('okflash','errflash'),900); }
 
-/*** Red ***/
-function jsonp(url, onDone){
-  const cb='cb_'+Math.random().toString(36).slice(2);
-  window[cb]=(data)=>{ try{ onDone(data); } finally{ delete window[cb]; scr.remove(); } };
-  const scr=el('script',{src:url+(url.includes('?')?'&':'?')+'callback='+cb});
-  scr.onerror=()=>{ try{ onDone({ok:false,error:'JSONP error'}); } finally{ delete window[cb]; scr.remove(); } };
-  document.head.appendChild(scr);
+/*** JSONP + sendBeacon (sin CORS) ***/
+function jsonp(url,cb){ const id='cb_'+Math.random().toString(36).slice(2);
+  window[id]=(d)=>{ try{ cb(d);} finally{ delete window[id]; s.remove(); } };
+  const s=el('script',{src:url+(url.includes('?')?'&':'?')+'callback='+id});
+  s.onerror=()=>{ try{ cb({ok:false,error:'JSONP error'});} finally{ delete window[id]; s.remove(); } };
+  document.head.appendChild(s);
 }
-async function postJSON(url, payload, timeoutMs=15000){
-  const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(), timeoutMs);
+function beacon(url, payloadObj){
   try{
-    const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:ctrl.signal});
-    return await res.json().catch(()=>({ok:false,error:'Respuesta inválida'}));
-  } finally { clearTimeout(to); }
+    const blob=new Blob([JSON.stringify(payloadObj)], {type:'text/plain;charset=UTF-8'});
+    navigator.sendBeacon(url, blob); // no bloquea, sin preflight, sin CORS
+  }catch(_){}
 }
 
-/*** Lógica de “siguiente” usando check (que devuelve tipo) ***/
-function nextTipoFrom(lastTipo){ return lastTipo==='entrada' ? 'salida' : 'entrada'; }
+/*** Lógica siguiente tipo con check (el backend devuelve tipo) ***/
+function nextTipoFrom(last){ return last==='entrada' ? 'salida' : 'entrada'; }
 function loadNext(nombre, btn){
   btn.textContent='…'; btn.className='btn';
-  const u=`${ENDPOINT}?check=1&nombre=${encodeURIComponent(nombre)}`;
-  jsonp(u, (r)=>{
-    const last = (r && r.tipo) || '';               // '' si no hay registros
-    const next = last ? nextTipoFrom(last) : 'entrada';
-    btn.dataset.next=next;
-    btn.classList.add(next==='entrada'?'in':'out');
-    btn.textContent = next==='entrada' ? 'Fichar ENTRADA' : 'Fichar SALIDA';
+  jsonp(`${ENDPOINT}?check=1&nombre=${encodeURIComponent(nombre)}`, r=>{
+    const last=(r&&r.tipo)||''; const next= last ? nextTipoFrom(last) : 'entrada';
+    btn.dataset.next=next; btn.classList.add(next==='entrada'?'in':'out');
+    btn.textContent= next==='entrada' ? 'Fichar ENTRADA' : 'Fichar SALIDA';
   });
 }
 
 /*** Render + eventos ***/
-const workers = WORKERS;
-workers.forEach(nombre=>{
-  const {row,btn}=rowEl(nombre);
-  list.appendChild(row);
-  loadNext(nombre, btn);
+WORKERS.forEach(nombre=>{
+  const {row,btn}=rowEl(nombre); list.appendChild(row); loadNext(nombre,btn);
 
   const handler=()=>{
     unlockAudioOnce();
     const next=btn.dataset.next||'entrada';
-    btn.setAttribute('aria-busy','true');          // overlay “Enviando…”
-    const url=`${ENDPOINT}?nombre=${encodeURIComponent(nombre)}&tipo=${encodeURIComponent(next)}&sinPausa=false`;
-    jsonp(url, (r)=>{
+    btn.setAttribute('aria-busy','true');
+
+    // Fichaje por JSONP → respuesta en <1s
+    jsonp(`${ENDPOINT}?nombre=${encodeURIComponent(nombre)}&tipo=${encodeURIComponent(next)}&sinPausa=false`, r=>{
       btn.removeAttribute('aria-busy');
+      if(!r||!r.ok){ flash(btn,false); setBar(`${nombre} — error`,false); return; }
 
-      if(!r || !r.ok){
-        flash(btn,false);
-        setBar(`${nombre} — error: ${(r && (r.msg||r.error))||'desconocido'}`, false);
-        return;
-      }
+      // OK inmediato + beep
+      flash(btn,true); beepOk(); setBar(`${nombre} — ${next} OK ${r.hora}`, true);
 
-      // OK inmediato + beep (sin bloquear por confirmaciones/foto)
-      flash(btn,true);
-      beepOk();
-      setBar(`${nombre} — ${next} OK ${r.hora}`, true);
+      // Foto en background por sendBeacon (sin CORS/preflight)
+      const durl=captureDataURL();
+      if(durl){ beacon(ENDPOINT, { token:r.token||'', photo:durl, nombre, tipo:next }); }
 
-      // Foto en background (con token + redundancia nombre/tipo)
-      try{
-        const durl=captureToDataURL();
-        if(durl){
-          postJSON(ENDPOINT, {
-            token: r.token || '',
-            photo: durl,
-            nombre: nombre,
-            tipo: next
-          }).then(x=>{ if(!x.ok) console.log('Foto err:', x.error||x.msg); });
-        }
-      }catch(_){}
+      // Confirmación silenciosa (no bloquea)
+      const afterIso=new Date().toISOString();
+      (function confirm(attempts=8,delay=400){
+        const step=(n)=>jsonp(`${ENDPOINT}?check=1&nombre=${encodeURIComponent(nombre)}&after=${encodeURIComponent(afterIso)}`,
+          x=>{ if(x&&x.ok){} else if(n>1) setTimeout(()=>step(n-1),delay); else setBar(`${nombre} — no confirmado`,false); });
+        step(attempts);
+      })();
 
-      // Confirmación silenciosa (no bloquea UI)
-      (function confirmReceipt(nombre, afterIso, attempts=8, delayMs=400){
-        const _step=(left)=>{
-          const u=`${ENDPOINT}?check=1&nombre=${encodeURIComponent(nombre)}&after=${encodeURIComponent(afterIso)}`;
-          jsonp(u, rr=>{
-            if(rr && rr.ok){ /* ok */ }
-            else if(left>1){ setTimeout(()=>_step(left-1), delayMs); }
-            else { setBar(`${nombre} — no confirmado (revisa conexión)`, false); }
-          });
-        };
-        _step(attempts);
-      })(nombre, new Date().toISOString());
-
-      // Alterna el botón al siguiente tipo
+      // Alterna UI al siguiente tipo
       btn.dataset.next = next==='entrada' ? 'salida' : 'entrada';
       btn.classList.toggle('in'); btn.classList.toggle('out');
       btn.textContent = btn.dataset.next==='entrada' ? 'Fichar ENTRADA' : 'Fichar SALIDA';
