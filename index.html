@@ -3,22 +3,30 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Fichaje — Simple</title>
+<title>Fichaje — Cámara arriba + Botón único por trabajador</title>
 <style>
-  :root{ --gap:12px; --r:14px; --maxw:1100px; --btnH:56px; --btnFS:18px;
-         --green:#1f8f44; --green2:#13813a; --red:#c63c3c; --red2:#b03333; }
-  *{ box-sizing:border-box }
-  body{ margin:0; font-family:system-ui,Arial,sans-serif; background:#eef2f6; color:#0f172a; }
+  :root{
+    --gap:12px; --r:14px; --maxw:1100px;
+    --btnH:50px; --btnFS:17px;
+    --green:#1f8f44; --green2:#13813a;
+    --red:#c63c3c;  --red2:#b03333;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; font-family:system-ui,Arial,sans-serif; background:#eef2f6; color:#0f172a; }
   .wrap{ max-width:var(--maxw); margin:16px auto 96px; padding:0 var(--gap); }
-  h1{ margin:0 0 10px; font-size:26px; font-weight:800; }
+  h1{ margin:0 0 10px; font-size:26px; font-weight:800; letter-spacing:.2px; }
 
-  .camWrap{ display:flex; justify-content:center; margin:6px 0 14px; }
+  /* Cámara arriba, centrada (espejo SOLO en UI; la foto sale normal) */
+  .camWrap{ display:flex; justify-content:center; margin:4px 0 14px; }
   .card{ width:320px; background:#fff; border-radius:16px; box-shadow:0 10px 28px rgba(15,23,42,.08); padding:10px; }
-  .card h3{ margin:0 0 6px; font-size:14px; font-weight:800; text-align:center; }
-  .cam{ width:100%; aspect-ratio:4/3; background:#000; border-radius:10px; overflow:hidden; }
-  video,canvas{ width:100%; height:100%; display:block }
-  .hint{ margin-top:6px; font-size:12px; color:#666; text-align:center }
+  .card h3{ margin:0 0 6px; font-size:14px; font-weight:800; text-align:center; color:#0f172a; }
+  .cam{ width:100%; aspect-ratio: 4 / 3; background:#000; border-radius:10px; overflow:hidden; }
+  video{ width:100%; height:100%; display:block; transform:scaleX(-1); } /* espejo UI */
+  canvas{ width:100%; height:100%; display:block; }                     /* sin espejo */
 
+  .hint{ margin-top:6px; font-size:12px; color:#666; text-align:center; }
+
+  /* Lista: nombre + botón compacto */
   .list{ display:grid; gap:10px }
   .row{ display:flex; gap:10px; align-items:center }
   .name{ flex:1; background:#fff; border-radius:12px; padding:0 12px; height:var(--btnH);
@@ -29,26 +37,42 @@
     box-shadow:0 4px 12px rgba(0,0,0,.08), inset 0 -2px 0 rgba(0,0,0,.08); position:relative;
     transition:transform .06s ease, filter .12s ease, box-shadow .12s ease;
   }
-  .btn:active{ transform:translateY(1px); filter:brightness(.98) }
-  .btn.in { background:linear-gradient(180deg,var(--green),var(--green2)) }
-  .btn.out{ background:linear-gradient(180deg,var(--red),var(--red2)) }
+  .btn:active{ transform:translateY(1px); filter:brightness(.98); }
+  .btn.in  { background:linear-gradient(180deg, var(--green), var(--green2)); }
+  .btn.out { background:linear-gradient(180deg, var(--red),   var(--red2));  }
+
+  /* Overlay “Enviando…” sobre el botón */
   .btn[aria-busy="true"]::after{
-    content:"Enviando…"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    content:"Enviando…";
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     background:rgba(0,0,0,.20); border-radius:inherit; font-weight:800; color:#fff;
   }
   .okflash { box-shadow:0 0 0 3px rgba(16,185,129,.55) inset, 0 4px 12px rgba(0,0,0,.08) }
   .errflash{ box-shadow:0 0 0 3px rgba(239,68,68,.65) inset, 0 4px 12px rgba(0,0,0,.08) }
 
-  .bar{ position:fixed; left:50%; bottom:14px; transform:translateX(-50%); width:min(820px,92vw);
-        background:#fff; border-radius:14px; box-shadow:0 14px 34px rgba(0,0,0,.18);
-        padding:10px 14px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:16px; }
-  .msg-ok{ color:#0f6b35 } .msg-err{ color:#a21919 } .bar[hidden]{ display:none }
+  /* Rectángulo blanco inferior fijo (estado) */
+  .bar{
+    position:fixed; left:50%; bottom:14px; transform:translateX(-50%);
+    width: min(820px, 92vw);
+    background:#fff; border-radius:14px; box-shadow:0 14px 34px rgba(0,0,0,.18);
+    padding:10px 14px; display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:16px;
+  }
+  .msg-ok  { color:#0f6b35; }
+  .msg-err { color:#a21919; }
+  .bar[hidden]{ display:none; }
+
+  @media (max-width:780px){
+    :root{ --btnH:46px; --btnFS:16px; }
+    .card{ width:92vw; max-width:360px; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Fichaje rápido</h1>
 
+  <!-- CÁMARA ARRIBA, CENTRADA -->
   <div class="camWrap">
     <section class="card">
       <h3>Cámara (auto)</h3>
@@ -60,106 +84,172 @@
     </section>
   </div>
 
+  <!-- LISTA TRABAJADORES: un botón por persona (auto alterna ENTRADA/SALIDA) -->
   <div id="list" class="list" aria-label="Fichaje"></div>
 </div>
 
+<!-- Rectángulo blanco inferior -->
 <div id="bar" class="bar" hidden><span id="barMsg" class="msg-ok">Listo</span></div>
 
 <script>
-const ENDPOINT='https://script.google.com/macros/s/AKfycbxlR17AJQw87pZgALcfRTE__1ud65aXrRj7B0OG7tu3Lj5s1bCsFRw09WS81qDa2Q-k/exec';
-const WORKERS=['Ana López Martín','Carla Gómez Torres','Luis Fernández Díaz','Diego Pérez Ruiz'];
-const TARGET_WIDTH=640, JPEG_QUALITY=0.6;
+/*** CONFIG ***/
+const ENDPOINT = 'https://script.google.com/macros/s/AKfycbxlR17AJQw87pZgALcfRTE__1ud65aXrRj7B0OG7tu3Lj5s1bCsFRw09WS81qDa2Q-k/exec';
+const WORKERS  = [
+  'Ana López Martín',
+  'Carla Gómez Torres',
+  'Luis Fernández Díaz',
+  'Diego Pérez Ruiz'
+];
+const TARGET_WIDTH = 640;       // tamaño captura
+const JPEG_QUALITY = 0.6;       // compresión
 
-const list=document.getElementById('list'), bar=document.getElementById('bar'), barMsg=document.getElementById('barMsg');
-const video=document.getElementById('video'), canvas=document.getElementById('canvas'), camStatus=document.getElementById('camStatus');
+/*** DOM ***/
+const list   = document.getElementById('list');
+const bar    = document.getElementById('bar');
+const barMsg = document.getElementById('barMsg');
+const video  = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const camStatus = document.getElementById('camStatus');
 
-/* Cámara */
-let camReady=false;
-(async function(){
+/*** AUDIO (beep inmediato tras OK) ***/
+let audioUnlocked=false;
+function unlockAudioOnce(){
+  if (audioUnlocked) return;
+  try {
+    const AC=window.AudioContext||window.webkitAudioContext;
+    const a=new AC(); const o=a.createOscillator(); const g=a.createGain();
+    o.connect(g); g.connect(a.destination); g.gain.value=0; o.start(); o.stop(0); a.close();
+    audioUnlocked=true;
+  } catch(_) {}
+}
+function beepOk(){
   try{
-    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
-    video.srcObject=stream; await video.play().catch(()=>{});
+    const AC=window.AudioContext||window.webkitAudioContext;
+    const a=new AC(); const o=a.createOscillator(); const g=a.createGain();
+    o.connect(g); g.connect(a.destination);
+    o.type='sine'; o.frequency.value=880; g.gain.setValueAtTime(0.06,a.currentTime);
+    o.start(); setTimeout(()=>{o.stop(); a.close();},120);
+  }catch(_){}
+}
+
+/*** Cámara ***/
+let camReady=false;
+(async function initCamera(){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({ video:{facingMode:'user'}, audio:false });
+    video.srcObject=stream;
+    await video.play().catch(()=>{});
     camReady=true; camStatus.textContent='Cámara lista';
-  }catch(_){ camReady=false; camStatus.textContent='Sin acceso a cámara (se enviará sin foto)'; }
+  }catch(e){
+    camReady=false; camStatus.textContent='Sin acceso a cámara (se enviará sin foto)';
+  }
 })();
-function photoDataURL(){
-  if(!camReady||!video.videoWidth) return '';
-  const vw=video.videoWidth, vh=video.videoHeight, scale=TARGET_WIDTH/vw;
-  canvas.width=Math.round(vw*scale); canvas.height=Math.round(vh*scale);
-  canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
+function captureToDataURL(){
+  if(!camReady || !video.videoWidth || !video.videoHeight) return '';
+  const vw=video.videoWidth, vh=video.videoHeight;
+  const scale=TARGET_WIDTH/vw, tw=Math.round(vw*scale), th=Math.round(vh*scale);
+  canvas.width=tw; canvas.height=th;
+  const ctx=canvas.getContext('2d',{willReadFrequently:false});
+  // NO transform en canvas: la foto se guarda con orientación normal
+  ctx.drawImage(video,0,0,tw,th);
   return canvas.toDataURL('image/jpeg', JPEG_QUALITY);
 }
 
-/* Audio */
-let audioUnlocked=false;
-function unlockAudio(){ if(audioUnlocked) return;
-  try{ const AC=window.AudioContext||window.webkitAudioContext; const a=new AC(), o=a.createOscillator(), g=a.createGain();
-    o.connect(g); g.connect(a.destination); g.gain.value=0; o.start(); o.stop(0); a.close(); audioUnlocked=true; }catch(_){}
+/*** Utils ***/
+function el(tag, attrs={}, text=''){
+  const n=document.createElement(tag);
+  for(const k in attrs){ if(k==='class') n.className=attrs[k]; else n.setAttribute(k, attrs[k]); }
+  if(text) n.textContent=text;
+  return n;
 }
-function beep(){ try{ const AC=window.AudioContext||window.webkitAudioContext; const a=new AC(), o=a.createOscillator(), g=a.createGain();
-  o.connect(g); g.connect(a.destination); o.type='sine'; o.frequency.value=880; g.gain.setValueAtTime(0.06,a.currentTime);
-  o.start(); setTimeout(()=>{o.stop();a.close();},120);}catch(_){}
-}
-
-/* Helpers */
 function rowEl(nombre){
-  const row=document.createElement('div'); row.className='row';
-  const name=document.createElement('div'); name.className='name'; name.textContent=nombre;
-  const btn=document.createElement('div'); btn.className='btn'; btn.setAttribute('role','button'); btn.tabIndex=0;
-  btn.textContent='…';
+  const row=el('div',{class:'row'});
+  const name=el('div',{class:'name'},nombre);
+  const btn =el('div',{class:'btn',role:'button',tabindex:'0'},'…');
   row.appendChild(name); row.appendChild(btn);
   return {row,btn};
 }
-function setBar(msg,ok=true){ barMsg.textContent=msg; barMsg.className=ok?'msg-ok':'msg-err'; bar.hidden=false; }
-function flash(node,ok=true){ node.classList.remove('okflash','errflash'); node.classList.add(ok?'okflash':'errflash'); setTimeout(()=>node.classList.remove('okflash','errflash'),900); }
+function flash(node, ok=true){
+  node.classList.remove('okflash','errflash');
+  node.classList.add(ok?'okflash':'errflash');
+  setTimeout(()=>node.classList.remove('okflash','errflash'), 900);
+}
+function setBar(msg, ok=true){
+  barMsg.textContent=msg; barMsg.className = ok ? 'msg-ok' : 'msg-err'; bar.hidden=false;
+}
 
-/* Net */
-function jsonp(url, cb){
-  const id='cb_'+Math.random().toString(36).slice(2);
-  window[id]=(d)=>{ try{ cb(d); } finally{ delete window[id]; s.remove(); } };
-  const s=document.createElement('script'); s.src=url+(url.includes('?')?'&':'?')+'callback='+id;
-  s.onerror=()=>{ try{ cb({ok:false,error:'JSONP error'}) } finally{ delete window[id]; s.remove(); } };
-  document.head.appendChild(s);
+/*** Red ***/
+function jsonp(url, onDone){
+  const cb='cb_'+Math.random().toString(36).slice(2);
+  window[cb]=(data)=>{ try{ onDone(data); } finally{ delete window[cb]; scr.remove(); } };
+  const scr=el('script',{src:url+(url.includes('?')?'&':'?')+'callback='+cb});
+  scr.onerror=()=>{ try{ onDone({ok:false,error:'JSONP error'}); } finally{ delete window[cb]; scr.remove(); } };
+  document.head.appendChild(scr);
 }
 async function postJSON(url, payload, timeoutMs=15000){
-  const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),timeoutMs);
-  try{ const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:ctrl.signal});
-       return await r.json().catch(()=>({ok:false,error:'Respuesta inválida'})); }
-  finally{ clearTimeout(to); }
+  const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(), timeoutMs);
+  try{
+    const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:ctrl.signal});
+    return await res.json().catch(()=>({ok:false,error:'Respuesta inválida'}));
+  } finally { clearTimeout(to); }
 }
 
-/* Lógica: decidir próximo tipo usando check (que ahora devuelve tipo) */
+/*** Decide el próximo tipo con el check (el backend debe devolver también tipo) ***/
 function nextTipoFrom(lastTipo){ return lastTipo==='entrada' ? 'salida' : 'entrada'; }
 function loadNext(nombre, btn){
   btn.textContent='…'; btn.className='btn';
   const u=`${ENDPOINT}?check=1&nombre=${encodeURIComponent(nombre)}`;
   jsonp(u, (r)=>{
-    const lastTipo=(r && r.tipo)||'';  // '' si no hay registros
-    const next= lastTipo ? nextTipoFrom(lastTipo) : 'entrada';
+    const last = (r && r.tipo) || '';               // '' si no hay registros
+    const next = last ? nextTipoFrom(last) : 'entrada';
     btn.dataset.next=next;
     btn.classList.add(next==='entrada'?'in':'out');
-    btn.textContent= next==='entrada' ? 'Fichar ENTRADA' : 'Fichar SALIDA';
+    btn.textContent = next==='entrada' ? 'Fichar ENTRADA' : 'Fichar SALIDA';
   });
 }
 
-/* Render y eventos */
-WORKERS.forEach(nombre=>{
+/*** Render + eventos ***/
+const workers = WORKERS; // edita aquí la lista
+workers.forEach(nombre=>{
   const {row,btn}=rowEl(nombre);
   list.appendChild(row);
   loadNext(nombre, btn);
 
   const handler=()=>{
-    unlockAudio();
+    unlockAudioOnce();
     const next=btn.dataset.next||'entrada';
-    btn.setAttribute('aria-busy','true');
+    btn.setAttribute('aria-busy','true');          // overlay “Enviando…”
     const url=`${ENDPOINT}?nombre=${encodeURIComponent(nombre)}&tipo=${encodeURIComponent(next)}&sinPausa=false`;
-    jsonp(url, async (r)=>{
+    jsonp(url, (r)=>{
       btn.removeAttribute('aria-busy');
-      if(!r||!r.ok){ flash(btn,false); setBar(`${nombre} — error: ${(r&&(r.msg||r.error))||'desconocido'}`, false); return; }
-      flash(btn,true); beep(); setBar(`${nombre} — ${next} OK ${r.hora}`, true);
-      try{ const durl=photoDataURL(); if(durl) postJSON(ENDPOINT,{token:r.token, photo:durl}); }catch(_){}
-      // Alterna a la siguiente acción:
-      btn.dataset.next = next === 'entrada' ? 'salida' : 'entrada';
+      if(!r || !r.ok){ flash(btn,false); setBar(`${nombre} — error: ${(r && (r.msg||r.error))||'desconocido'}`, false); return; }
+
+      // OK inmediato + beep (sin esperar confirmaciones ni foto)
+      flash(btn,true); beepOk(); setBar(`${nombre} — ${next} OK ${r.hora}`, true);
+
+      // Foto en background (no bloquea)
+      try{
+        const durl=captureToDataURL();
+        if(durl) postJSON(ENDPOINT, { token:r.token, photo:durl }).then(x=>{
+          if(!x.ok) console.log('Foto err:', x.error||x.msg);
+        });
+      }catch(_){}
+
+      // Confirmación silenciosa (no bloquea UI)
+      (function confirmReceipt(nombre, afterIso, attempts=8, delayMs=400){
+        const _step=(left)=>{
+          const u=`${ENDPOINT}?check=1&nombre=${encodeURIComponent(nombre)}&after=${encodeURIComponent(afterIso)}`;
+          jsonp(u, rr=>{
+            if(rr && rr.ok){ /* OK */ }
+            else if(left>1){ setTimeout(()=>_step(left-1), delayMs); }
+            else { setBar(`${nombre} — no confirmado (revisa conexión)`, false); }
+          });
+        };
+        _step(attempts);
+      })(nombre, new Date().toISOString());
+
+      // Alterna el botón al siguiente tipo
+      btn.dataset.next = next==='entrada' ? 'salida' : 'entrada';
       btn.classList.toggle('in'); btn.classList.toggle('out');
       btn.textContent = btn.dataset.next==='entrada' ? 'Fichar ENTRADA' : 'Fichar SALIDA';
     });
