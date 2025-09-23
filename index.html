@@ -12,174 +12,105 @@
   .wrap{ max-width:var(--maxw); margin:16px auto 96px; padding:0 var(--gap) }
   h1{ margin:0 0 10px; font-size:26px; font-weight:800 }
 
-  /* Cámara arriba (espejo solo UI) */
   .camWrap{ display:flex; justify-content:center; margin:4px 0 14px }
   .card{ width:320px; background:#fff; border-radius:16px; box-shadow:0 10px 28px rgba(15,23,42,.08); padding:10px }
-  .card h3{ margin:0 0 6px; font-size:14px; font-weight:800; text-align:center }
   .cam{ width:100%; aspect-ratio:4/3; background:#000; border-radius:10px; overflow:hidden }
-  video{ width:100%; height:100%; display:block; transform:scaleX(-1) } /* espejo UI */
-  canvas{ width:100%; height:100%; display:block }
+  video{ width:100%; height:100%; display:block; transform:scaleX(-1) }
+  canvas{ display:none }
   .hint{ margin-top:6px; font-size:12px; color:#666; text-align:center }
 
-  /* Lista */
   .list{ display:grid; gap:10px }
   .row{ display:flex; gap:10px; align-items:center }
   .name{ flex:1; background:#fff; border-radius:12px; padding:0 12px; height:var(--btnH);
          display:flex; align-items:center; font-weight:700; box-shadow:0 2px 8px rgba(0,0,0,.06) }
   .btn{
     min-width:180px; height:var(--btnH); border-radius:12px; color:#fff; font-weight:800; font-size:var(--btnFS);
-    display:flex; align-items:center; justify-content:center; padding:0 12px; cursor:pointer; user-select:none;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; user-select:none;
     box-shadow:0 4px 12px rgba(0,0,0,.08), inset 0 -2px 0 rgba(0,0,0,.08); position:relative;
-    transition:transform .06s ease, filter .12s ease, box-shadow .12s ease;
   }
-  .btn:active{ transform:translateY(1px); filter:brightness(.98) }
   .btn.in  { background:linear-gradient(180deg,var(--green),var(--green2)) }
   .btn.out { background:linear-gradient(180deg,var(--red),var(--red2)) }
   .btn[aria-busy="true"]::after{
     content:"Enviando…"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     background:rgba(0,0,0,.20); border-radius:inherit; font-weight:800; color:#fff;
   }
-  .okflash{ box-shadow:0 0 0 3px rgba(16,185,129,.55) inset, 0 4px 12px rgba(0,0,0,.08) }
-  .errflash{ box-shadow:0 0 0 3px rgba(239,68,68,.65) inset, 0 4px 12px rgba(0,0,0,.08) }
 
-  /* Barra inferior */
   .bar{ position:fixed; left:50%; bottom:14px; transform:translateX(-50%); width:min(820px,92vw);
         background:#fff; border-radius:14px; box-shadow:0 14px 34px rgba(0,0,0,.18);
-        padding:10px 14px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:16px }
+        padding:10px 14px; font-weight:800; font-size:16px; text-align:center }
   .msg-ok{ color:#0f6b35 } .msg-err{ color:#a21919 } .bar[hidden]{ display:none }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Fichaje rápido</h1>
-
   <div class="camWrap">
     <section class="card">
-      <h3>Cámara (auto)</h3>
       <div class="cam">
         <video id="video" playsinline autoplay muted></video>
-        <canvas id="canvas" hidden></canvas>
+        <canvas id="canvas"></canvas>
       </div>
       <div id="camStatus" class="hint"></div>
     </section>
   </div>
-
   <div id="list" class="list"></div>
 </div>
-
 <div id="bar" class="bar" hidden><span id="barMsg" class="msg-ok">Listo</span></div>
 
 <script>
-/*** CONFIG ***/
 const ENDPOINT='https://script.google.com/macros/s/AKfycbxlR17AJQw87pZgALcfRTE__1ud65aXrRj7B0OG7tu3Lj5s1bCsFRw09WS81qDa2Q-k/exec';
 const WORKERS=['Ana López Martín','Carla Gómez Torres','Luis Fernández Díaz','Diego Pérez Ruiz'];
-const TARGET_WIDTH=640, JPEG_QUALITY=0.6;
-
-/*** DOM ***/
-const list=document.getElementById('list'), bar=document.getElementById('bar'), barMsg=document.getElementById('barMsg');
 const video=document.getElementById('video'), canvas=document.getElementById('canvas'), camStatus=document.getElementById('camStatus');
+const bar=document.getElementById('bar'), barMsg=document.getElementById('barMsg');
 
-/*** AUDIO (beep inmediato tras OK) ***/
-let audioUnlocked=false;
-function unlockAudioOnce(){ if(audioUnlocked) return;
-  try{ const AC=window.AudioContext||window.webkitAudioContext; const a=new AC(), o=a.createOscillator(), g=a.createGain();
-    o.connect(g); g.connect(a.destination); g.gain.value=0; o.start(); o.stop(0); a.close(); audioUnlocked=true; }catch(_){}
+// Beep simple
+function beepOk(){
+  try{ new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play(); }catch(_){}
 }
-function beepOk(){ try{ const AC=window.AudioContext||window.webkitAudioContext; const a=new AC(), o=a.createOscillator(), g=a.createGain();
-  o.connect(g); g.connect(a.destination); o.type='sine'; o.frequency.value=880; g.gain.setValueAtTime(0.06,a.currentTime);
-  o.start(); setTimeout(()=>{o.stop(); a.close();},120);}catch(_){} }
 
-/*** Cámara ***/
+// Cámara
 let camReady=false;
-(async function(){
-  try{
-    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
-    video.srcObject=stream; await video.play().catch(()=>{});
-    camReady=true; camStatus.textContent='Cámara lista';
-  }catch(_){ camReady=false; camStatus.textContent='Sin acceso a cámara (se enviará sin foto)'; }
-})();
+navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}}).then(s=>{
+  video.srcObject=s; camReady=true; camStatus.textContent='Cámara lista';
+}).catch(()=>{ camStatus.textContent='Sin acceso a cámara'; });
+
 function captureDataURL(){
   if(!camReady||!video.videoWidth) return '';
-  const vw=video.videoWidth, vh=video.videoHeight, scale=TARGET_WIDTH/vw;
-  const tw=Math.round(vw*scale), th=Math.round(vh*scale);
-  canvas.width=tw; canvas.height=th;
-  canvas.getContext('2d').drawImage(video,0,0,tw,th); // sin espejo en captura
-  return canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+  canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+  canvas.getContext('2d').drawImage(video,0,0);
+  return canvas.toDataURL('image/jpeg',0.6);
 }
 
-/*** Utilidades ***/
-function el(tag,attrs={},txt=''){ const n=document.createElement(tag);
-  for(const k in attrs){ k==='class'? n.className=attrs[k] : n.setAttribute(k,attrs[k]); }
-  if(txt) n.textContent=txt; return n; }
-function rowEl(nombre){ const row=el('div',{class:'row'});
-  const name=el('div',{class:'name'},nombre); const btn=el('div',{class:'btn',role:'button',tabindex:'0'},'…');
-  row.appendChild(name); row.appendChild(btn); return {row,btn}; }
+// Helpers
 function setBar(msg,ok=true){ barMsg.textContent=msg; barMsg.className=ok?'msg-ok':'msg-err'; bar.hidden=false; }
-function flash(n,ok=true){ n.classList.remove('okflash','errflash'); n.classList.add(ok?'okflash':'errflash'); setTimeout(()=>n.classList.remove('okflash','errflash'),900); }
-
-/*** JSONP + sendBeacon (sin CORS) ***/
-function jsonp(url,cb){ const id='cb_'+Math.random().toString(36).slice(2);
-  window[id]=(d)=>{ try{ cb(d);} finally{ delete window[id]; s.remove(); } };
-  const s=el('script',{src:url+(url.includes('?')?'&':'?')+'callback='+id});
-  s.onerror=()=>{ try{ cb({ok:false,error:'JSONP error'});} finally{ delete window[id]; s.remove(); } };
-  document.head.appendChild(s);
+function jsonp(url,cb){ const id='cb'+Date.now();
+  window[id]=(d)=>{ cb(d); delete window[id]; s.remove(); };
+  const s=document.createElement('script'); s.src=url+(url.includes('?')?'&':'?')+'callback='+id;
+  document.body.appendChild(s);
 }
-function beacon(url, payloadObj){
-  try{
-    const blob=new Blob([JSON.stringify(payloadObj)], {type:'text/plain;charset=UTF-8'});
-    navigator.sendBeacon(url, blob); // no bloquea, sin preflight, sin CORS
-  }catch(_){}
-}
+function beacon(payload){ try{ navigator.sendBeacon(ENDPOINT, new Blob([JSON.stringify(payload)],{type:'text/plain'})); }catch(_){} }
 
-/*** Lógica siguiente tipo con check (el backend devuelve tipo) ***/
-function nextTipoFrom(last){ return last==='entrada' ? 'salida' : 'entrada'; }
-function loadNext(nombre, btn){
-  btn.textContent='…'; btn.className='btn';
-  jsonp(`${ENDPOINT}?check=1&nombre=${encodeURIComponent(nombre)}`, r=>{
-    const last=(r&&r.tipo)||''; const next= last ? nextTipoFrom(last) : 'entrada';
-    btn.dataset.next=next; btn.classList.add(next==='entrada'?'in':'out');
-    btn.textContent= next==='entrada' ? 'Fichar ENTRADA' : 'Fichar SALIDA';
-  });
-}
-
-/*** Render + eventos ***/
+// Render workers
+const list=document.getElementById('list');
 WORKERS.forEach(nombre=>{
-  const {row,btn}=rowEl(nombre); list.appendChild(row); loadNext(nombre,btn);
+  const row=document.createElement('div'); row.className='row';
+  const name=document.createElement('div'); name.className='name'; name.textContent=nombre;
+  const btn=document.createElement('div'); btn.className='btn in'; btn.textContent='Fichar ENTRADA';
+  row.appendChild(name); row.appendChild(btn); list.appendChild(row);
 
-  const handler=()=>{
-    unlockAudioOnce();
-    const next=btn.dataset.next||'entrada';
+  btn.onclick=()=>{
     btn.setAttribute('aria-busy','true');
-
-    // Fichaje por JSONP → respuesta en <1s
-    jsonp(`${ENDPOINT}?nombre=${encodeURIComponent(nombre)}&tipo=${encodeURIComponent(next)}&sinPausa=false`, r=>{
+    const tipo=btn.classList.contains('in')?'entrada':'salida';
+    jsonp(`${ENDPOINT}?nombre=${encodeURIComponent(nombre)}&tipo=${tipo}`, r=>{
       btn.removeAttribute('aria-busy');
-      if(!r||!r.ok){ flash(btn,false); setBar(`${nombre} — error`,false); return; }
-
-      // OK inmediato + beep
-      flash(btn,true); beepOk(); setBar(`${nombre} — ${next} OK ${r.hora}`, true);
-
-      // Foto en background por sendBeacon (sin CORS/preflight)
-      const durl=captureDataURL();
-      if(durl){ beacon(ENDPOINT, { token:r.token||'', photo:durl, nombre, tipo:next }); }
-
-      // Confirmación silenciosa (no bloquea)
-      const afterIso=new Date().toISOString();
-      (function confirm(attempts=8,delay=400){
-        const step=(n)=>jsonp(`${ENDPOINT}?check=1&nombre=${encodeURIComponent(nombre)}&after=${encodeURIComponent(afterIso)}`,
-          x=>{ if(x&&x.ok){} else if(n>1) setTimeout(()=>step(n-1),delay); else setBar(`${nombre} — no confirmado`,false); });
-        step(attempts);
-      })();
-
-      // Alterna UI al siguiente tipo
-      btn.dataset.next = next==='entrada' ? 'salida' : 'entrada';
-      btn.classList.toggle('in'); btn.classList.toggle('out');
-      btn.textContent = btn.dataset.next==='entrada' ? 'Fichar ENTRADA' : 'Fichar SALIDA';
+      if(r&&r.ok){
+        beepOk(); setBar(`${nombre} — ${tipo} OK ${r.hora}`,true);
+        const durl=captureDataURL(); if(durl) beacon({token:r.token||'',photo:durl,nombre,tipo});
+        btn.classList.toggle('in'); btn.classList.toggle('out');
+        btn.textContent=btn.classList.contains('in')?'Fichar ENTRADA':'Fichar SALIDA';
+      }else setBar(`${nombre} — error`,false);
     });
   };
-
-  btn.addEventListener('click', handler);
-  btn.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ handler(); e.preventDefault(); } });
 });
 </script>
 </body>
