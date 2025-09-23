@@ -16,17 +16,16 @@
   .wrap{ max-width:var(--maxw); margin:16px auto 96px; padding:0 var(--gap); }
   h1{ margin:0 0 10px; font-size:26px; font-weight:800; letter-spacing:.2px; }
 
-  /* Cámara arriba, centrada (espejo SOLO en UI; la foto sale normal) */
+  /* Cámara arriba (espejo solo UI) */
   .camWrap{ display:flex; justify-content:center; margin:4px 0 14px; }
   .card{ width:320px; background:#fff; border-radius:16px; box-shadow:0 10px 28px rgba(15,23,42,.08); padding:10px; }
   .card h3{ margin:0 0 6px; font-size:14px; font-weight:800; text-align:center; color:#0f172a; }
   .cam{ width:100%; aspect-ratio: 4 / 3; background:#000; border-radius:10px; overflow:hidden; }
-  video{ width:100%; height:100%; display:block; transform:scaleX(-1); } /* espejo UI */
-  canvas{ width:100%; height:100%; display:block; }                     /* sin espejo */
-
+  video{ width:100%; height:100%; display:block; transform:scaleX(-1); }
+  canvas{ width:100%; height:100%; display:block; }
   .hint{ margin-top:6px; font-size:12px; color:#666; text-align:center; }
 
-  /* Lista: nombre + botón compacto */
+  /* Lista nombre + botón compacto (auto alterna ENTRADA/SALIDA) */
   .list{ display:grid; gap:10px }
   .row{ display:flex; gap:10px; align-items:center }
   .name{ flex:1; background:#fff; border-radius:12px; padding:0 12px; height:var(--btnH);
@@ -40,17 +39,14 @@
   .btn:active{ transform:translateY(1px); filter:brightness(.98); }
   .btn.in  { background:linear-gradient(180deg, var(--green), var(--green2)); }
   .btn.out { background:linear-gradient(180deg, var(--red),   var(--red2));  }
-
-  /* Overlay “Enviando…” sobre el botón */
   .btn[aria-busy="true"]::after{
-    content:"Enviando…";
-    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    content:"Enviando…"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     background:rgba(0,0,0,.20); border-radius:inherit; font-weight:800; color:#fff;
   }
   .okflash { box-shadow:0 0 0 3px rgba(16,185,129,.55) inset, 0 4px 12px rgba(0,0,0,.08) }
   .errflash{ box-shadow:0 0 0 3px rgba(239,68,68,.65) inset, 0 4px 12px rgba(0,0,0,.08) }
 
-  /* Rectángulo blanco inferior fijo (estado) */
+  /* Rectángulo blanco inferior (estado) */
   .bar{
     position:fixed; left:50%; bottom:14px; transform:translateX(-50%);
     width: min(820px, 92vw);
@@ -72,7 +68,7 @@
 <div class="wrap">
   <h1>Fichaje rápido</h1>
 
-  <!-- CÁMARA ARRIBA, CENTRADA -->
+  <!-- CÁMARA -->
   <div class="camWrap">
     <section class="card">
       <h3>Cámara (auto)</h3>
@@ -84,24 +80,18 @@
     </section>
   </div>
 
-  <!-- LISTA TRABAJADORES: un botón por persona (auto alterna ENTRADA/SALIDA) -->
+  <!-- LISTA TRABAJADORES -->
   <div id="list" class="list" aria-label="Fichaje"></div>
 </div>
 
-<!-- Rectángulo blanco inferior -->
+<!-- Estado inferior -->
 <div id="bar" class="bar" hidden><span id="barMsg" class="msg-ok">Listo</span></div>
 
 <script>
 /*** CONFIG ***/
-const ENDPOINT = 'https://script.google.com/macros/s/AKfycbxlR17AJQw87pZgALcfRTE__1ud65aXrRj7B0OG7tu3Lj5s1bCsFRw09WS81qDa2Q-k/exec';
-const WORKERS  = [
-  'Ana López Martín',
-  'Carla Gómez Torres',
-  'Luis Fernández Díaz',
-  'Diego Pérez Ruiz'
-];
-const TARGET_WIDTH = 640;       // tamaño captura
-const JPEG_QUALITY = 0.6;       // compresión
+const ENDPOINT = 'https://script.google.com/macros/s/AKfycbxlR17AJQw87pZgALcfRTE__1ud65aXrRj7B0OG7tu3Lj5s1bCsFRw09WS81qDa2Q-k/exec'; // tu WebApp
+const WORKERS  = ['Ana López Martín','Carla Gómez Torres','Luis Fernández Díaz','Diego Pérez Ruiz'];
+const TARGET_WIDTH = 640, JPEG_QUALITY = 0.6;
 
 /*** DOM ***/
 const list   = document.getElementById('list');
@@ -111,7 +101,7 @@ const video  = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const camStatus = document.getElementById('camStatus');
 
-/*** AUDIO (beep inmediato tras OK) ***/
+/*** AUDIO ***/
 let audioUnlocked=false;
 function unlockAudioOnce(){
   if (audioUnlocked) return;
@@ -132,7 +122,7 @@ function beepOk(){
   }catch(_){}
 }
 
-/*** Cámara ***/
+/*** Cámara (espejo solo en video; canvas guarda normal) ***/
 let camReady=false;
 (async function initCamera(){
   try{
@@ -150,8 +140,7 @@ function captureToDataURL(){
   const scale=TARGET_WIDTH/vw, tw=Math.round(vw*scale), th=Math.round(vh*scale);
   canvas.width=tw; canvas.height=th;
   const ctx=canvas.getContext('2d',{willReadFrequently:false});
-  // NO transform en canvas: la foto se guarda con orientación normal
-  ctx.drawImage(video,0,0,tw,th);
+  ctx.drawImage(video,0,0,tw,th); // sin espejo en la captura
   return canvas.toDataURL('image/jpeg', JPEG_QUALITY);
 }
 
@@ -194,7 +183,7 @@ async function postJSON(url, payload, timeoutMs=15000){
   } finally { clearTimeout(to); }
 }
 
-/*** Decide el próximo tipo con el check (el backend debe devolver también tipo) ***/
+/*** Lógica de “siguiente” usando check (que devuelve tipo) ***/
 function nextTipoFrom(lastTipo){ return lastTipo==='entrada' ? 'salida' : 'entrada'; }
 function loadNext(nombre, btn){
   btn.textContent='…'; btn.className='btn';
@@ -209,7 +198,7 @@ function loadNext(nombre, btn){
 }
 
 /*** Render + eventos ***/
-const workers = WORKERS; // edita aquí la lista
+const workers = WORKERS;
 workers.forEach(nombre=>{
   const {row,btn}=rowEl(nombre);
   list.appendChild(row);
@@ -222,17 +211,29 @@ workers.forEach(nombre=>{
     const url=`${ENDPOINT}?nombre=${encodeURIComponent(nombre)}&tipo=${encodeURIComponent(next)}&sinPausa=false`;
     jsonp(url, (r)=>{
       btn.removeAttribute('aria-busy');
-      if(!r || !r.ok){ flash(btn,false); setBar(`${nombre} — error: ${(r && (r.msg||r.error))||'desconocido'}`, false); return; }
 
-      // OK inmediato + beep (sin esperar confirmaciones ni foto)
-      flash(btn,true); beepOk(); setBar(`${nombre} — ${next} OK ${r.hora}`, true);
+      if(!r || !r.ok){
+        flash(btn,false);
+        setBar(`${nombre} — error: ${(r && (r.msg||r.error))||'desconocido'}`, false);
+        return;
+      }
 
-      // Foto en background (no bloquea)
+      // OK inmediato + beep (sin bloquear por confirmaciones/foto)
+      flash(btn,true);
+      beepOk();
+      setBar(`${nombre} — ${next} OK ${r.hora}`, true);
+
+      // Foto en background (con token + redundancia nombre/tipo)
       try{
         const durl=captureToDataURL();
-        if(durl) postJSON(ENDPOINT, { token:r.token, photo:durl }).then(x=>{
-          if(!x.ok) console.log('Foto err:', x.error||x.msg);
-        });
+        if(durl){
+          postJSON(ENDPOINT, {
+            token: r.token || '',
+            photo: durl,
+            nombre: nombre,
+            tipo: next
+          }).then(x=>{ if(!x.ok) console.log('Foto err:', x.error||x.msg); });
+        }
       }catch(_){}
 
       // Confirmación silenciosa (no bloquea UI)
@@ -240,7 +241,7 @@ workers.forEach(nombre=>{
         const _step=(left)=>{
           const u=`${ENDPOINT}?check=1&nombre=${encodeURIComponent(nombre)}&after=${encodeURIComponent(afterIso)}`;
           jsonp(u, rr=>{
-            if(rr && rr.ok){ /* OK */ }
+            if(rr && rr.ok){ /* ok */ }
             else if(left>1){ setTimeout(()=>_step(left-1), delayMs); }
             else { setBar(`${nombre} — no confirmado (revisa conexión)`, false); }
           });
@@ -254,6 +255,7 @@ workers.forEach(nombre=>{
       btn.textContent = btn.dataset.next==='entrada' ? 'Fichar ENTRADA' : 'Fichar SALIDA';
     });
   };
+
   btn.addEventListener('click', handler);
   btn.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ handler(); e.preventDefault(); } });
 });
