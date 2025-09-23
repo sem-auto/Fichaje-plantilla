@@ -58,40 +58,79 @@
 <div id="bar" class="bar" hidden><span id="barMsg" class="msg-ok">Listo</span></div>
 
 <script>
+/*** CONFIG ***/
 const ENDPOINT='https://script.google.com/macros/s/AKfycbxlR17AJQw87pZgALcfRTE__1ud65aXrRj7B0OG7tu3Lj5s1bCsFRw09WS81qDa2Q-k/exec';
 const WORKERS=['Ana López Martín','Carla Gómez Torres','Luis Fernández Díaz','Diego Pérez Ruiz'];
+
+/*** DOM ***/
 const video=document.getElementById('video'), canvas=document.getElementById('canvas'), camStatus=document.getElementById('camStatus');
 const bar=document.getElementById('bar'), barMsg=document.getElementById('barMsg');
+const list=document.getElementById('list');
 
-// Beep simple
+/*** AUDIO: desbloqueo y beep via WebAudio ***/
+let audioCtx=null;
+function ensureAudio(){
+  if(!audioCtx){
+    const C=window.AudioContext||window.webkitAudioContext;
+    audioCtx=new C();
+  }
+  if(audioCtx.state==='suspended') audioCtx.resume();
+}
+function unlockAudioOnce(){
+  ensureAudio();
+  // quitar listeners tras primer gesto
+  window.removeEventListener('pointerdown', unlockAudioOnce);
+  window.removeEventListener('keydown', unlockAudioOnce);
+}
+window.addEventListener('pointerdown', unlockAudioOnce, {once:true});
+window.addEventListener('keydown', unlockAudioOnce, {once:true});
+
 function beepOk(){
-  try{ new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play(); }catch(_){}
+  try{
+    ensureAudio();
+    const t=audioCtx.currentTime;
+    const o=audioCtx.createOscillator();
+    const g=audioCtx.createGain();
+    o.type='sine'; o.frequency.value=880;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.08, t+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+0.15);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t); o.stop(t+0.16);
+  }catch(_){}
 }
 
-// Cámara
+/*** Cámara ***/
 let camReady=false;
-navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}}).then(s=>{
-  video.srcObject=s; camReady=true; camStatus.textContent='Cámara lista';
-}).catch(()=>{ camStatus.textContent='Sin acceso a cámara'; });
+navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false})
+.then(s=>{ video.srcObject=s; camReady=true; camStatus.textContent='Cámara lista'; })
+.catch(()=>{ camStatus.textContent='Sin acceso a cámara'; });
 
 function captureDataURL(){
   if(!camReady||!video.videoWidth) return '';
   canvas.width=video.videoWidth; canvas.height=video.videoHeight;
-  canvas.getContext('2d').drawImage(video,0,0);
+  const ctx=canvas.getContext('2d');
+  ctx.save();              // capturamos “no espejo”
+  ctx.scale(-1,1);         // deshacer espejo de previsualización
+  ctx.drawImage(video, -video.videoWidth, 0); // volcar imagen
+  ctx.restore();
   return canvas.toDataURL('image/jpeg',0.6);
 }
 
-// Helpers
+/*** Helpers ***/
 function setBar(msg,ok=true){ barMsg.textContent=msg; barMsg.className=ok?'msg-ok':'msg-err'; bar.hidden=false; }
-function jsonp(url,cb){ const id='cb'+Date.now();
-  window[id]=(d)=>{ cb(d); delete window[id]; s.remove(); };
+function jsonp(url,cb){
+  const id='cb'+Math.random().toString(36).slice(2);
+  window[id]=(d)=>{ try{ cb(d);} finally{ delete window[id]; s.remove(); } };
   const s=document.createElement('script'); s.src=url+(url.includes('?')?'&':'?')+'callback='+id;
+  s.onerror=()=>{ try{ cb({ok:false,error:'JSONP error'});} finally{ delete window[id]; s.remove(); } };
   document.body.appendChild(s);
 }
-function beacon(payload){ try{ navigator.sendBeacon(ENDPOINT, new Blob([JSON.stringify(payload)],{type:'text/plain'})); }catch(_){} }
+function beacon(payload){
+  try{ navigator.sendBeacon(ENDPOINT,new Blob([JSON.stringify(payload)],{type:'text/plain;charset=UTF-8'})); }catch(_){}
+}
 
-// Render workers
-const list=document.getElementById('list');
+/*** Render ***/
 WORKERS.forEach(nombre=>{
   const row=document.createElement('div'); row.className='row';
   const name=document.createElement('div'); name.className='name'; name.textContent=nombre;
@@ -99,16 +138,23 @@ WORKERS.forEach(nombre=>{
   row.appendChild(name); row.appendChild(btn); list.appendChild(row);
 
   btn.onclick=()=>{
+    ensureAudio();                 // garantiza que el audio está desbloqueado por el gesto
     btn.setAttribute('aria-busy','true');
-    const tipo=btn.classList.contains('in')?'entrada':'salida';
+    const tipo = btn.classList.contains('in') ? 'entrada' : 'salida';
+
     jsonp(`${ENDPOINT}?nombre=${encodeURIComponent(nombre)}&tipo=${tipo}`, r=>{
       btn.removeAttribute('aria-busy');
-      if(r&&r.ok){
-        beepOk(); setBar(`${nombre} — ${tipo} OK ${r.hora}`,true);
-        const durl=captureDataURL(); if(durl) beacon({token:r.token||'',photo:durl,nombre,tipo});
+      if(r && r.ok){
+        beepOk(); // beep inmediato tras OK
+        setBar(`${nombre} — ${tipo} OK ${r.hora}`, true);
+        const durl=captureDataURL();
+        if(durl){ beacon({ token:r.token||'', photo:durl, nombre, tipo }); }
+        // toggle próximo tipo
         btn.classList.toggle('in'); btn.classList.toggle('out');
-        btn.textContent=btn.classList.contains('in')?'Fichar ENTRADA':'Fichar SALIDA';
-      }else setBar(`${nombre} — error`,false);
+        btn.textContent = btn.classList.contains('in') ? 'Fichar ENTRADA' : 'Fichar SALIDA';
+      }else{
+        setBar(`${nombre} — error`, false);
+      }
     });
   };
 });
