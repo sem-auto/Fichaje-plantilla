@@ -3,51 +3,66 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Fichaje — Cámara arriba + Botones</title>
+<title>Fichaje — Cámara arriba + Botones compactos</title>
 <style>
-  :root{ --gap:14px; --r:16px; --w:1100px; --btnH:86px; }
+  :root{
+    --gap:14px; --r:16px; --maxw:1100px;
+    --btnH:64px; --btnFS:19px;
+    --green:#1f8f44; --green2:#13813a;
+    --red:#c63c3c;  --red2:#b03333;
+  }
   *{ box-sizing:border-box; }
-  html,body{ margin:0; font-family:system-ui,Arial,sans-serif; background:#eef2f6; color:#111; }
-  .wrap{ max-width:var(--w); margin:18px auto; padding:0 var(--gap); }
-  h1{ margin:0 0 12px; font-size:32px; font-weight:800; }
+  html,body{ margin:0; font-family:system-ui,Arial,sans-serif; background:#eef2f6; color:#0f172a; }
+  .wrap{ max-width:var(--maxw); margin:18px auto 92px; padding:0 var(--gap); } /* margen inferior para el rectángulo */
+  h1{ margin:0 0 10px; font-size:28px; font-weight:800; letter-spacing:.2px; }
 
   /* Cámara arriba, centrada */
-  .camWrap{ display:flex; justify-content:center; margin-bottom:16px; }
-  .side{ width:340px; background:#fff; border-radius:16px; box-shadow:0 6px 24px rgba(0,0,0,.08); padding:12px; }
-  .side h3{ margin:0 0 8px; font-size:16px; font-weight:800; text-align:center; }
+  .camWrap{ display:flex; justify-content:center; margin:6px 0 16px; }
+  .card{ width:360px; background:#fff; border-radius:18px; box-shadow:0 10px 30px rgba(15,23,42,.08); padding:12px; }
+  .card h3{ margin:0 0 8px; font-size:15px; font-weight:800; text-align:center; color:#0f172a; }
   .cam{ width:100%; aspect-ratio: 4 / 3; background:#000; border-radius:12px; overflow:hidden; }
   video,canvas{ width:100%; height:100%; display:block; }
-  .hint{ margin-top:6px; font-size:12px; color:#445; opacity:.8; text-align:center; }
+  .hint{ margin-top:6px; font-size:12px; color:#666; text-align:center; }
 
-  /* Botones: dos columnas (Entrada / Salida) */
-  .layout{ display:grid; grid-template-columns: 1fr 1fr; gap:16px; align-items:start; }
-  .grid{ display:grid; grid-template-columns:1fr; gap:14px; }
+  /* Botones en dos columnas compactos */
+  .layout{ display:grid; grid-template-columns: 1fr 1fr; gap:12px 16px; align-items:start; }
+  .col{ display:grid; grid-template-columns:1fr; gap:12px; }
 
   .cell{
-    display:flex; align-items:center; justify-content:center; height:var(--btnH);
-    border-radius:20px; font-weight:800; font-size:24px; color:#fff; cursor:pointer; user-select:none;
-    transition:transform .05s ease-out, filter .15s ease; text-align:center; padding:0 14px; position:relative;
+    position:relative; display:flex; align-items:center; justify-content:center;
+    height:var(--btnH); border-radius:16px; color:#fff; font-weight:800; font-size:var(--btnFS);
+    user-select:none; cursor:pointer; padding:0 12px; text-align:center;
+    box-shadow:0 6px 16px rgba(0,0,0,.08), inset 0 -2px 0 rgba(0,0,0,.08);
+    transition:transform .06s ease, filter .12s ease, box-shadow .12s ease;
   }
-  .in { background:#1f8f44; }     /* verde */
-  .out{ background:#c63c3c; }      /* rojo  */
-  .cell:active{ transform:scale(.995); filter:brightness(.98); }
+  .cell:active{ transform:translateY(1px); filter:brightness(.98); }
+  .in  { background:linear-gradient(180deg, var(--green), var(--green2)); }
+  .out { background:linear-gradient(180deg, var(--red),   var(--red2));  }
 
-  /* Rectángulo “Enviando…” sobre el botón pulsado */
+  /* Overlay “Enviando…” */
   .cell[aria-busy="true"]::after{
     content:"Enviando…";
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    background:rgba(0,0,0,.18); border-radius:inherit; font-weight:800; color:#fff;
+    background:rgba(0,0,0,.20); border-radius:inherit; font-weight:800; color:#fff;
   }
-  .okflash{ box-shadow:0 0 0 3px rgba(16,185,129,.55) inset; }
-  .errflash{ box-shadow:0 0 0 3px rgba(239,68,68,.65) inset; }
+  .okflash{ box-shadow:0 0 0 3px rgba(16,185,129,.55) inset, 0 6px 16px rgba(0,0,0,.08); }
+  .errflash{ box-shadow:0 0 0 3px rgba(239,68,68,.65) inset, 0 6px 16px rgba(0,0,0,.08); }
 
-  .footer{ margin-top:14px; border-radius:12px; padding:10px 12px; font-weight:700; text-align:center; }
-  .status-ok{ background:#e7f9ef; color:#0f6b35; } .status-err{ background:#fdecec; color:#a21919; }
+  /* Rectángulo inferior (estado) */
+  .toast{
+    position:fixed; left:50%; bottom:16px; transform:translateX(-50%);
+    min-width:280px; max-width: min(680px, 90vw);
+    padding:12px 16px; border-radius:12px; font-weight:700; text-align:center;
+    box-shadow:0 10px 30px rgba(0,0,0,.15);
+  }
+  .toast.ok  { background:#e7f9ef; color:#0f6b35; }
+  .toast.err { background:#fdecec; color:#a21919; }
+  .toast[hidden]{ display:none; }
 
-  @media (max-width:720px){
-    :root{ --btnH:76px; }
-    .cell{ font-size:20px; }
-    .side{ width:90%; }
+  @media (max-width:780px){
+    :root{ --btnH:58px; --btnFS:17px; }
+    .card{ width:92vw; max-width:420px; }
+    .layout{ grid-template-columns:1fr; }
   }
 </style>
 </head>
@@ -57,24 +72,25 @@
 
   <!-- CÁMARA ARRIBA, CENTRADA -->
   <div class="camWrap">
-    <aside class="side">
+    <section class="card">
       <h3>Cámara (auto)</h3>
       <div class="cam">
         <video id="video" playsinline autoplay muted></video>
         <canvas id="canvas" hidden></canvas>
       </div>
       <div id="camStatus" class="hint"></div>
-    </aside>
+    </section>
   </div>
 
   <!-- BOTONES: IZQ ENTRADA / DCHA SALIDA -->
   <div class="layout">
-    <div id="colIn"  class="grid" aria-label="Entradas"></div>
-    <div id="colOut" class="grid" aria-label="Salidas"></div>
+    <div id="colIn"  class="col" aria-label="Entradas"></div>
+    <div id="colOut" class="col" aria-label="Salidas"></div>
   </div>
-
-  <div id="status" class="footer" hidden></div>
 </div>
+
+<!-- Rectángulo inferior (estado) -->
+<div id="toast" class="toast ok" hidden>OK</div>
 
 <script>
 /*** CONFIG ***/
@@ -91,8 +107,8 @@ const JPEG_QUALITY = 0.6;
 /*** DOM ***/
 const colIn  = document.getElementById('colIn');
 const colOut = document.getElementById('colOut');
-const statusBox = document.getElementById('status');
-const video = document.getElementById('video');
+const toast  = document.getElementById('toast');
+const video  = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const camStatus = document.getElementById('camStatus');
 
@@ -140,8 +156,8 @@ function el(tag, attrs={}, text=''){ const n=document.createElement(tag);
   for(const k in attrs){ if(k==='class') n.className=attrs[k]; else n.setAttribute(k, attrs[k]); }
   if(text) n.textContent=text; return n;
 }
-function showStatus(msg, ok=true){ statusBox.className='footer '+(ok?'status-ok':'status-err'); statusBox.textContent=msg; statusBox.hidden=false; }
 function flash(node, ok=true){ node.classList.remove('okflash','errflash'); node.classList.add(ok?'okflash':'errflash'); setTimeout(()=>node.classList.remove('okflash','errflash'), 900); }
+function showToast(msg, ok=true){ toast.className='toast '+(ok?'ok':'err'); toast.textContent=msg; toast.hidden=false; }
 
 /*** JSONP/POST ***/
 function jsonp(url, onDone){
@@ -195,11 +211,11 @@ function onClick(e){
   jsonp(url, async r=>{
     t.removeAttribute('aria-busy');
 
-    if(!r || !r.ok){ flash(t,false); showStatus(`${nombre} — error: ${(r && (r.msg||r.error))||'desconocido'}`, false); return; }
+    if(!r || !r.ok){ flash(t,false); showToast(`${nombre} — error: ${(r && (r.msg||r.error))||'desconocido'}`, false); return; }
 
     flash(t,true);
     beepOk();
-    showStatus(`${nombre} — ${tipo} OK ${r.hora}`, true);
+    showToast(`${nombre} — ${tipo} OK ${r.hora}`, true);
 
     // Fase 2: Foto en background (si hay cámara)
     try{
@@ -210,7 +226,7 @@ function onClick(e){
 
     // Confirmación silenciosa (evita falsos “no confirmado”)
     const ok=await confirmReceipt(nombre, afterIso, 8, 400);
-    if(!ok) showStatus(`${nombre} — no confirmado (revisa conexión)`, false);
+    if(!ok) showToast(`${nombre} — no confirmado (revisa conexión)`, false);
   });
 }
 </script>
